@@ -1,3 +1,4 @@
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 
 from apps.drivers.forms import DriverCreateForm, DriverUpdateForm
@@ -25,6 +26,27 @@ class DriverCreateFormTests(TestCase):
 
         profile = UserProfile.objects.get(user=driver.user)
         self.assertEqual(profile.role, 'driver')
+
+    def test_rejects_invalid_avatar_upload_type(self):
+        avatar = SimpleUploadedFile('avatar.pdf', b'fake-pdf', content_type='application/pdf')
+        form = DriverCreateForm(
+            data={
+                'first_name': 'Carlos',
+                'last_name': 'Silva',
+                'email': 'carlos@example.com',
+                'username': 'carlos.avatar',
+                'password': 'senha123',
+                'cnh': '12345678903',
+                'cnh_expiration': '2030-01-01',
+                'phone': '(62) 99999-9999',
+                'address': 'Rua A, 10',
+                'is_available': 'on',
+            },
+            files={'avatar': avatar},
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertIn('avatar', form.errors)
 
     def test_update_keeps_user_profile_role_as_driver(self):
         create_form = DriverCreateForm(data={
