@@ -1,3 +1,4 @@
+from datetime import timedelta
 from decimal import Decimal
 
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -56,13 +57,13 @@ class MaintenanceFormTests(TestCase):
             'odometer': 8200,
             'workshop': 'Oficina Centro',
             'next_alert_km': 9000,
-            'next_alert_date': (timezone.localdate() + timezone.timedelta(days=30)).isoformat(),
+            'next_alert_date': (timezone.localdate() + timedelta(days=30)).isoformat(),
         }
         data.update(overrides)
         return MaintenanceForm(data=data)
 
     def test_rejects_future_maintenance_date(self):
-        form = self.build_form(date=(timezone.localdate() + timezone.timedelta(days=1)).isoformat())
+        form = self.build_form(date=(timezone.localdate() + timedelta(days=1)).isoformat())
 
         self.assertFalse(form.is_valid())
         self.assertIn('date', form.errors)
@@ -74,7 +75,7 @@ class MaintenanceFormTests(TestCase):
         self.assertIn('cost', form.errors)
 
     def test_rejects_next_alert_date_before_maintenance_date(self):
-        form = self.build_form(next_alert_date=(timezone.localdate() - timezone.timedelta(days=1)).isoformat())
+        form = self.build_form(next_alert_date=(timezone.localdate() - timedelta(days=1)).isoformat())
 
         self.assertFalse(form.is_valid())
         self.assertIn('next_alert_date', form.errors)
@@ -91,7 +92,7 @@ class MaintenanceFormTests(TestCase):
                 'odometer': 8200,
                 'workshop': 'Oficina Centro',
                 'next_alert_km': 9000,
-                'next_alert_date': (timezone.localdate() + timezone.timedelta(days=30)).isoformat(),
+                'next_alert_date': (timezone.localdate() + timedelta(days=30)).isoformat(),
             },
             files={'invoice': invoice},
         )
@@ -115,7 +116,7 @@ class MaintenanceFormTests(TestCase):
                 'odometer': 8200,
                 'workshop': 'Oficina Centro',
                 'next_alert_km': 9000,
-                'next_alert_date': (timezone.localdate() + timezone.timedelta(days=30)).isoformat(),
+                'next_alert_date': (timezone.localdate() + timedelta(days=30)).isoformat(),
             },
             files={'invoice': invoice},
         )
