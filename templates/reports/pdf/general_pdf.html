@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<style>
+  body { font-family: Arial, sans-serif; font-size: 11px; color: #333; }
+  h1 { color: #01696F; font-size: 18px; }
+  h2 { color: #01696F; font-size: 14px; margin-top: 24px; border-bottom: 1px solid #01696F; padding-bottom: 4px; }
+  .header { border-bottom: 2px solid #01696F; padding-bottom: 8px; margin-bottom: 16px; }
+  .summary { display: flex; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
+  .summary-box { background: #f5f5f5; padding: 10px 16px; border-radius: 6px; min-width: 140px; }
+  .summary-box small { display: block; color: #666; font-size: 10px; }
+  .summary-box strong { font-size: 14px; color: #01696F; }
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  th { background: #01696F; color: white; padding: 6px; text-align: left; font-size: 10px; }
+  td { padding: 5px 6px; border-bottom: 1px solid #eee; font-size: 10px; }
+  tr:nth-child(even) td { background: #f9f9f9; }
+  .footer { margin-top: 20px; font-size: 9px; color: #999; text-align: right; }
+</style>
+</head>
+<body>
+  <div class="header">
+    <h1>🚛 FleetISP – Relatório Geral</h1>
+    <p>Período: {{ date_from|date:"d/m/Y" }} a {{ date_to|date:"d/m/Y" }}</p>
+  </div>
+
+  <div class="summary">
+    <div class="summary-box"><small>Custo Combustível</small><strong>R$ {{ fuel_cost|floatformat:2 }}</strong></div>
+    <div class="summary-box"><small>Litros Abastecidos</small><strong>{{ fuel_liters|floatformat:1 }} L</strong></div>
+    <div class="summary-box"><small>Viagens</small><strong>{{ trip_count }} ({{ total_distance }} km)</strong></div>
+    <div class="summary-box"><small>Custo Manutenção</small><strong>R$ {{ maint_cost|floatformat:2 }}</strong></div>
+    <div class="summary-box" style="background:#e6f7f7;"><small>CUSTO TOTAL</small><strong>R$ {{ total_cost|floatformat:2 }}</strong></div>
+  </div>
+
+  <h2>Combustível</h2>
+  <table>
+    <thead><tr><th>Data</th><th>Veículo</th><th>Litros</th><th>Total</th><th>Posto</th></tr></thead>
+    <tbody>
+      {% for r in fuel_records %}
+      <tr>
+        <td>{{ r.date|date:"d/m/Y" }}</td>
+        <td>{{ r.vehicle }} ({{ r.vehicle.plate }})</td>
+        <td>{{ r.liters|floatformat:2 }} L</td>
+        <td>R$ {{ r.total_cost|floatformat:2 }}</td>
+        <td>{{ r.gas_station }}</td>
+      </tr>
+      {% empty %}<tr><td colspan="5" style="text-align:center;color:#999;">Sem registros.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+
+  <h2>Viagens</h2>
+  <table>
+    <thead><tr><th>Início</th><th>Veículo</th><th>Motorista</th><th>Destino</th><th>Distância</th></tr></thead>
+    <tbody>
+      {% for t in trips %}
+      <tr>
+        <td>{{ t.start_time|date:"d/m/Y H:i" }}</td>
+        <td>{{ t.vehicle }}</td>
+        <td>{{ t.driver }}</td>
+        <td>{{ t.destination }}</td>
+        <td>{{ t.distance }} km</td>
+      </tr>
+      {% empty %}<tr><td colspan="5" style="text-align:center;color:#999;">Sem registros.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+
+  <h2>Manutenção</h2>
+  <table>
+    <thead><tr><th>Data</th><th>Veículo</th><th>Tipo</th><th>Descrição</th><th>Custo</th></tr></thead>
+    <tbody>
+      {% for m in maintenances %}
+      <tr>
+        <td>{{ m.date|date:"d/m/Y" }}</td>
+        <td>{{ m.vehicle }} ({{ m.vehicle.plate }})</td>
+        <td>{{ m.get_type_display }}</td>
+        <td>{{ m.description }}</td>
+        <td>R$ {{ m.cost|floatformat:2 }}</td>
+      </tr>
+      {% empty %}<tr><td colspan="5" style="text-align:center;color:#999;">Sem registros.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+
+  <div class="footer">Gerado em: {{ generated_at|date:"d/m/Y H:i" }}</div>
+</body>
+</html>

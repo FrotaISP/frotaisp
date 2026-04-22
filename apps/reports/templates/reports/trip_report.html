@@ -1,56 +1,62 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <title>Relatório de Viagens</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 2cm; }
-        h1 { color: #198754; border-bottom: 2px solid #198754; }
-        table { width: 100%; border-collapse: collapse; }
-        th { background: #f2f2f2; padding: 8px; }
-        td { padding: 8px; border-bottom: 1px solid #ddd; }
-        .summary { background: #f8f9fa; padding: 15px; margin: 20px 0; }
-    </style>
-</head>
-<body>
-    <h1>Relatório de Viagens / Ordens de Serviço</h1>
-    <p><strong>Período:</strong> {{ summary.start_date|date:"d/m/Y" }} a {{ summary.end_date|date:"d/m/Y" }}</p>
-    
-    <div class="summary">
-        <p><strong>Total de viagens:</strong> {{ summary.total_trips }}</p>
-        <p><strong>Quilometragem total percorrida:</strong> {{ summary.total_km }} km</p>
-    </div>
+{% extends "base.html" %}
+{% block title %}Relatório de Viagens | Frota ISP{% endblock %}
 
-    <table>
-        <thead>
-            <tr>
-                <th>Data Início</th>
-                <th>Veículo</th>
-                <th>Motorista</th>
-                <th>Destino</th>
-                <th>Km Inicial</th>
-                <th>Km Final</th>
-                <th>Distância</th>
-            </tr>
+{% block content %}
+<div class="container py-4">
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <div>
+      <a href="{% url 'reports:dashboard' %}" class="text-muted small">← Relatórios</a>
+      <h1 class="h3 mb-0 mt-1">🗺️ Viagens</h1>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="{% url 'reports:trips_pdf' %}?date_from={{ date_from|date:'Y-m-d' }}&date_to={{ date_to|date:'Y-m-d' }}{% if driver_id %}&driver={{ driver_id }}{% endif %}{% if vehicle_id %}&vehicle={{ vehicle_id }}{% endif %}"
+         class="btn btn-sm btn-danger">📄 Exportar PDF</a>
+      <a href="{% url 'reports:trips_excel' %}?date_from={{ date_from|date:'Y-m-d' }}&date_to={{ date_to|date:'Y-m-d' }}{% if driver_id %}&driver={{ driver_id }}{% endif %}{% if vehicle_id %}&vehicle={{ vehicle_id }}{% endif %}"
+         class="btn btn-sm btn-success">📊 Exportar Excel</a>
+    </div>
+  </div>
+
+  {% include "reports/_filters.html" %}
+
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+      <div class="card border-0 bg-light text-center py-3">
+        <div class="small text-muted text-uppercase fw-semibold">Total de Viagens</div>
+        <div class="fs-5 fw-bold">{{ count }}</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card border-0 bg-light text-center py-3">
+        <div class="small text-muted text-uppercase fw-semibold">Distância Total</div>
+        <div class="fs-5 fw-bold">{{ total_distance }} km</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-dark">
+          <tr><th>Início</th><th>Fim</th><th>Veículo</th><th>Motorista</th><th>Destino</th><th>Propósito</th><th>Distância</th><th>Nº OS</th></tr>
         </thead>
         <tbody>
-            {% for trip in summary.trips %}
-            <tr>
-                <td>{{ trip.start_time|date:"d/m/Y H:i" }}</td>
-                <td>{{ trip.vehicle.plate }}</td>
-                <td>{{ trip.driver.user.get_full_name }}</td>
-                <td>{{ trip.destination }}</td>
-                <td>{{ trip.start_odometer }}</td>
-                <td>{{ trip.end_odometer|default:"—" }}</td>
-                <td>{{ trip.distance }} km</td>
-            </tr>
-            {% empty %}
-            <tr><td colspan="7">Nenhuma viagem no período.</td></tr>
-            {% endfor %}
+          {% for t in trips %}
+          <tr>
+            <td>{{ t.start_time|date:"d/m/Y H:i" }}</td>
+            <td>{% if t.end_time %}{{ t.end_time|date:"d/m/Y H:i" }}{% else %}<span class="badge bg-warning text-dark">Em andamento</span>{% endif %}</td>
+            <td>{{ t.vehicle }}</td>
+            <td>{{ t.driver }}</td>
+            <td>{{ t.destination }}</td>
+            <td class="text-muted small">{{ t.purpose|truncatechars:50 }}</td>
+            <td class="fw-bold">{{ t.distance }} km</td>
+            <td>{{ t.service_order|default:"—" }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="8" class="text-center text-muted py-4">Nenhuma viagem encontrada para o período.</td></tr>
+          {% endfor %}
         </tbody>
-    </table>
-    <div class="footer" style="margin-top: 30px; font-size: 12px;">
-        Relatório gerado em {{ generated_at|date:"d/m/Y H:i" }}
+      </table>
     </div>
-</body>
-</html>
+  </div>
+</div>
+{% endblock %}

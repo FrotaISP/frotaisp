@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Relatórios | Frota ISP{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <h1 class="h3 mb-1">📊 Central de Relatórios</h1>
+  <p class="text-muted mb-4">Gere e exporte relatórios por módulo ou um consolidado geral.</p>
+
+  <!-- Resumo do mês atual -->
+  <div class="row g-3 mb-4">
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <div class="text-muted small text-uppercase fw-semibold mb-1">💧 Combustível (mês)</div>
+          <div class="fs-4 fw-bold">R$ {{ fuel_month_total|floatformat:2 }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <div class="text-muted small text-uppercase fw-semibold mb-1">🚗 Viagens (mês)</div>
+          <div class="fs-4 fw-bold">{{ trips_month_count }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <div class="text-muted small text-uppercase fw-semibold mb-1">🔧 Manutenção (mês)</div>
+          <div class="fs-4 fw-bold">R$ {{ maintenance_month_cost|floatformat:2 }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cards de módulos -->
+  <div class="row g-3">
+    {% include "reports/_report_card.html" with title="Combustível" icon="⛽" desc="Controle de abastecimentos por veículo, período e posto." url_view="reports:fuel" color="teal" %}
+    {% include "reports/_report_card.html" with title="Viagens" icon="🗺️" desc="Histórico de viagens por motorista, veículo e destino." url_view="reports:trips" color="blue" %}
+    {% include "reports/_report_card.html" with title="Manutenção" icon="🔧" desc="Custos e registros de manutenções preventivas e corretivas." url_view="reports:maintenance" color="orange" %}
+    {% include "reports/_report_card.html" with title="Relatório Geral" icon="📋" desc="Visão consolidada de combustível, viagens e manutenção." url_view="reports:general" color="green" %}
+  </div>
+</div>
+{% endblock %}

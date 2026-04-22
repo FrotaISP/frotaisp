@@ -1,0 +1,53 @@
+{% extends "reports/pdf/_base_pdf.html" %}
+{% block header %}
+<h1>Relatório Geral da Frota</h1>
+<p class="subtitle">Período: {{ date_from|date:"d/m/Y" }} a {{ date_to|date:"d/m/Y" }}</p>
+{% endblock %}
+{% block content %}
+<div class="summary">
+  <div class="card"><div class="card-label">Custo Total</div><div class="card-value">R$ {{ total_cost|floatformat:2 }}</div></div>
+  <div class="card"><div class="card-label">Combustível</div><div class="card-value">R$ {{ fuel_cost|floatformat:2 }}</div></div>
+  <div class="card"><div class="card-label">Manutenção</div><div class="card-value">R$ {{ maint_cost|floatformat:2 }}</div></div>
+  <div class="card"><div class="card-label">Viagens</div><div class="card-value">{{ trip_count }}</div></div>
+  <div class="card"><div class="card-label">Km Percorridos</div><div class="card-value">{{ total_distance }} km</div></div>
+</div>
+
+<h2 style="color:#01696F;font-size:13px;margin:16px 0 4px;">Abastecimentos</h2>
+<table>
+  <thead><tr><th>Data</th><th>Veículo</th><th>Placa</th><th>Litros</th><th>Total</th><th>Posto</th></tr></thead>
+  <tbody>
+    {% for r in fuel_records %}
+    <tr>
+      <td>{{ r.date|date:"d/m/Y" }}</td><td>{{ r.vehicle }}</td><td>{{ r.vehicle.plate }}</td>
+      <td>{{ r.liters|floatformat:2 }} L</td><td>R$ {{ r.total_cost|floatformat:2 }}</td><td>{{ r.gas_station }}</td>
+    </tr>
+    {% empty %}<tr><td colspan="6" style="text-align:center;color:#999;">Sem registros.</td></tr>{% endfor %}
+  </tbody>
+</table>
+
+<h2 style="color:#01696F;font-size:13px;margin:16px 0 4px;">Viagens</h2>
+<table>
+  <thead><tr><th>Início</th><th>Veículo</th><th>Motorista</th><th>Destino</th><th>Distância</th></tr></thead>
+  <tbody>
+    {% for t in trips %}
+    <tr>
+      <td>{{ t.start_time|date:"d/m/Y" }}</td><td>{{ t.vehicle }}</td><td>{{ t.driver }}</td>
+      <td>{{ t.destination }}</td><td>{{ t.distance }} km</td>
+    </tr>
+    {% empty %}<tr><td colspan="5" style="text-align:center;color:#999;">Sem registros.</td></tr>{% endfor %}
+  </tbody>
+</table>
+
+<h2 style="color:#01696F;font-size:13px;margin:16px 0 4px;">Manutenções</h2>
+<table>
+  <thead><tr><th>Data</th><th>Veículo</th><th>Tipo</th><th>Descrição</th><th>Custo</th></tr></thead>
+  <tbody>
+    {% for m in maintenances %}
+    <tr>
+      <td>{{ m.date|date:"d/m/Y" }}</td><td>{{ m.vehicle }}</td><td>{{ m.get_type_display }}</td>
+      <td>{{ m.description|truncatechars:50 }}</td><td>R$ {{ m.cost|floatformat:2 }}</td>
+    </tr>
+    {% empty %}<tr><td colspan="5" style="text-align:center;color:#999;">Sem registros.</td></tr>{% endfor %}
+  </tbody>
+</table>
+{% endblock %}

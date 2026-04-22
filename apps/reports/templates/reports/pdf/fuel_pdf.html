@@ -1,0 +1,37 @@
+{% extends "reports/pdf/_base_pdf.html" %}
+{% block header %}
+<h1>Relatório de Combustível</h1>
+<p class="subtitle">Período: {{ date_from|date:"d/m/Y" }} a {{ date_to|date:"d/m/Y" }}</p>
+{% endblock %}
+{% block content %}
+<div class="summary">
+  <div class="card"><div class="card-label">Total Gasto</div><div class="card-value">R$ {{ total_cost|floatformat:2 }}</div></div>
+  <div class="card"><div class="card-label">Total Litros</div><div class="card-value">{{ total_liters|floatformat:2 }} L</div></div>
+  <div class="card"><div class="card-label">Preço Médio/L</div><div class="card-value">R$ {{ avg_price|floatformat:3 }}</div></div>
+  <div class="card"><div class="card-label">Registros</div><div class="card-value">{{ count }}</div></div>
+</div>
+<table>
+  <thead>
+    <tr>
+      <th>Data</th><th>Veículo</th><th>Placa</th><th>Litros</th>
+      <th>Preço/L</th><th>Total</th><th>Km</th><th>Posto</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in records %}
+    <tr>
+      <td>{{ r.date|date:"d/m/Y" }}</td>
+      <td>{{ r.vehicle }}</td>
+      <td>{{ r.vehicle.plate }}</td>
+      <td>{{ r.liters|floatformat:2 }} L</td>
+      <td>R$ {{ r.price_per_liter|floatformat:3 }}</td>
+      <td><strong>R$ {{ r.total_cost|floatformat:2 }}</strong></td>
+      <td>{{ r.odometer }} km</td>
+      <td>{{ r.gas_station }}</td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="8" style="text-align:center;color:#999;">Nenhum registro encontrado.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Relatório Geral | Frota ISP{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <div>
+      <a href="{% url 'reports:dashboard' %}" class="text-muted small">← Relatórios</a>
+      <h1 class="h3 mb-0 mt-1">📋 Relatório Geral</h1>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="{% url 'reports:general_pdf' %}?date_from={{ date_from|date:'Y-m-d' }}&date_to={{ date_to|date:'Y-m-d' }}"
+         class="btn btn-sm btn-danger">📄 Exportar PDF</a>
+      <a href="{% url 'reports:general_excel' %}?date_from={{ date_from|date:'Y-m-d' }}&date_to={{ date_to|date:'Y-m-d' }}"
+         class="btn btn-sm btn-success">📊 Exportar Excel</a>
+    </div>
+  </div>
+
+  {% include "reports/_filters.html" %}
+
+  <!-- KPIs gerais -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-4">
+      <div class="card border-0 shadow-sm text-center py-3">
+        <div class="small text-muted text-uppercase fw-semibold">💰 Custo Total</div>
+        <div class="fs-4 fw-bold text-primary">R$ {{ total_cost|floatformat:2 }}</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-4">
+      <div class="card border-0 shadow-sm text-center py-3">
+        <div class="small text-muted text-uppercase fw-semibold">⛽ Combustível</div>
+        <div class="fs-5 fw-bold text-success">R$ {{ fuel_cost|floatformat:2 }}</div>
+        <div class="text-muted small">{{ fuel_liters|floatformat:1 }} L | {{ fuel_count }} registros</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-4">
+      <div class="card border-0 shadow-sm text-center py-3">
+        <div class="small text-muted text-uppercase fw-semibold">🔧 Manutenção</div>
+        <div class="fs-5 fw-bold text-danger">R$ {{ maint_cost|floatformat:2 }}</div>
+        <div class="text-muted small">{{ maint_count }} registros</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-6">
+      <div class="card border-0 shadow-sm text-center py-3">
+        <div class="small text-muted text-uppercase fw-semibold">🗺️ Viagens</div>
+        <div class="fs-5 fw-bold">{{ trip_count }}</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-6">
+      <div class="card border-0 shadow-sm text-center py-3">
+        <div class="small text-muted text-uppercase fw-semibold">📍 Km Percorridos</div>
+        <div class="fs-5 fw-bold">{{ total_distance }} km</div>
+      </div>
+    </div>
+  </div>
+
+  <p class="text-muted text-center">
+    Use os botões acima para exportar o relatório completo com todas as tabelas detalhadas em PDF ou Excel.
+  </p>
+</div>
+{% endblock %}

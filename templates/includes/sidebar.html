@@ -26,7 +26,7 @@
             <a class="nav-link {% if request.resolver_match.app_name == 'maintenance' %}active{% endif %}" href="{% url 'maintenance:list' %}">
                 <i class="bi bi-tools"></i> Manutenções
             </a>
-            <a class="nav-link {% if request.resolver_match.app_name == 'reports' %}active{% endif %}" href="{% url 'reports:selector' %}">
+            <a class="nav-link {% if request.resolver_match.app_name == 'reports' %}active{% endif %}" href="{% url 'reports:dashboard' %}">
                 <i class="bi bi-file-earmark-bar-graph"></i> Relatórios
             </a>
         </nav>

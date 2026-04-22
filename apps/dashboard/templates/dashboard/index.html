@@ -5,14 +5,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard · FleetISP</title>
-    <!-- Bootstrap 5 + Ícones -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <!-- Estilos customizados -->
     <link rel="stylesheet" href="{% static 'css/custom.css' %}">
 </head>
 <body>
@@ -34,7 +30,7 @@
                         <a class="nav-link" href="{% url 'trips:list' %}"><i class="bi bi-map"></i> Viagens</a>
                         <a class="nav-link" href="{% url 'fuel:list' %}"><i class="bi bi-fuel-pump"></i> Combustível</a>
                         <a class="nav-link" href="{% url 'maintenance:list' %}"><i class="bi bi-tools"></i> Manutenções</a>
-                        <a class="nav-link" href="{% url 'reports:selector' %}"><i class="bi bi-file-earmark-bar-graph"></i> Relatórios</a>
+                        <a class="nav-link" href="{% url 'reports:dashboard' %}"><i class="bi bi-file-earmark-bar-graph"></i> Relatórios</a>
                     </nav>
                     <div class="mt-auto p-3 border-top border-secondary border-opacity-25">
                         <div class="d-flex align-items-center text-white">
@@ -56,15 +52,14 @@
                         <h5 class="mb-0 fw-semibold"><i class="bi bi-grid-3x3-gap-fill me-2 text-primary"></i>Visão Geral da Frota</h5>
                     </div>
                     <div class="d-flex align-items-center gap-3">
-                        <!-- ── Sino de notificações ──────────────────────────── -->
+                        <!-- Sino de notificações -->
                         <div class="dropdown">
                             <a href="{% url 'accounts:notificacoes' %}"
                                class="position-relative text-secondary text-decoration-none"
                                data-bs-toggle="dropdown" aria-expanded="false">
                                 <i class="bi bi-bell fs-5"></i>
                                 {% if notificacoes_nao_lidas %}
-                                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
-                                          id="notif-badge">
+                                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="notif-badge">
                                         {{ notificacoes_nao_lidas }}
                                     </span>
                                 {% endif %}
@@ -109,14 +104,15 @@
                                 </div>
                             </div>
                         </div>
-                        <!-- ── fim sino ──────────────────────────────────────── -->
 
                         <div class="vr"></div>
 
                         <!-- Dropdown do usuário -->
                         <div class="dropdown">
-                            <a href="#" class="d-flex align-items-center text-decoration-none dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" style="color: inherit;">
-                                <img src="https://ui-avatars.com/api/?name={{ request.user.get_full_name|default:request.user.username }}&background=0d6efd&color=fff&size=40&bold=true" class="avatar-sm me-2" alt="avatar">
+                            <a href="#" class="d-flex align-items-center text-decoration-none dropdown-toggle"
+                               data-bs-toggle="dropdown" aria-expanded="false" style="color: inherit;">
+                                <img src="https://ui-avatars.com/api/?name={{ request.user.get_full_name|default:request.user.username }}&background=0d6efd&color=fff&size=40&bold=true"
+                                     class="avatar-sm me-2" alt="avatar" width="40" height="40">
                                 <span class="d-none d-md-block">{{ request.user.get_full_name|default:request.user.username }}</span>
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end shadow">
@@ -173,7 +169,7 @@
                                     <div>
                                         <span class="text-secondary text-uppercase small fw-semibold">Veículos ativos</span>
                                         <h3 class="mt-2 mb-0 fw-bold">{{ total_vehicles }}</h3>
-                                        <small class="text-success"><i class="bi bi-arrow-up-short"></i> +2 este mês</small>
+                                        <small class="text-success"><i class="bi bi-arrow-up-short"></i> +{{ new_vehicles_month|default:0 }} este mês</small>
                                     </div>
                                     <div class="stat-icon"><i class="bi bi-truck"></i></div>
                                 </div>
@@ -197,7 +193,7 @@
                                     <div>
                                         <span class="text-secondary text-uppercase small fw-semibold">Km percorridos (mês)</span>
                                         <h3 class="mt-2 mb-0 fw-bold">{{ month_km|floatformat:0 }}</h3>
-                                        <small class="text-secondary">↑ 8% vs mês anterior</small>
+                                        <small class="text-secondary">{{ km_variation|default:"—" }} vs mês anterior</small>
                                     </div>
                                     <div class="stat-icon"><i class="bi bi-speedometer"></i></div>
                                 </div>
@@ -209,7 +205,7 @@
                                     <div>
                                         <span class="text-secondary text-uppercase small fw-semibold">Custo médio/km</span>
                                         <h3 class="mt-2 mb-0 fw-bold">R$ {{ avg_cost_per_km|floatformat:2 }}</h3>
-                                        <small class="text-success"><i class="bi bi-arrow-down-short"></i> -0,03</small>
+                                        <small class="text-muted">Combustível + Manutenção</small>
                                     </div>
                                     <div class="stat-icon"><i class="bi bi-cash-coin"></i></div>
                                 </div>
@@ -239,8 +235,8 @@
                                 <div class="card-body">
                                     <div id="vehicleMap" class="map-container"></div>
                                     <div class="mt-3 small text-secondary">
-                                        <i class="bi bi-circle-fill text-success me-1"></i> Em movimento · 
-                                        <i class="bi bi-circle-fill text-warning me-1"></i> Parado (motor ligado) · 
+                                        <i class="bi bi-circle-fill text-success me-1"></i> Em movimento ·
+                                        <i class="bi bi-circle-fill text-warning me-1"></i> Parado ·
                                         <i class="bi bi-circle-fill text-secondary me-1"></i> Estacionado
                                     </div>
                                 </div>
@@ -270,39 +266,67 @@
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {% for vehicle in vehicles %}
+                                                {# vehicles_data é uma lista de dicts preparada na view #}
+                                                {# Cada item: {vehicle, active_driver, in_trip, fuel_pct} #}
+                                                {% for item in vehicles_data %}
                                                 <tr>
                                                     <td>
                                                         <div class="d-flex align-items-center">
-                                                            <div class="bg-light rounded-3 p-2 me-3"><i class="bi bi-truck-front fs-5 text-primary"></i></div>
-                                                            <span class="fw-medium">{{ vehicle.model }}</span>
-                                                        </div>
-                                                    </td>
-                                                    <td><span class="badge bg-light text-dark">{{ vehicle.plate }}</span></td>
-                                                    <td>{{ vehicle.current_odometer }} km</td>
-                                                    <td>{{ vehicle.current_driver.user.get_full_name|default:"—" }}</td>
-                                                    <td>
-                                                        {% with last_trip=vehicle.trips.last %}
-                                                            {% if last_trip and not last_trip.end_time %}
-                                                                <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-1 rounded-pill"><i class="bi bi-truck me-1"></i>Em viagem</span>
-                                                            {% elif vehicle.is_active %}
-                                                                <span class="badge bg-success bg-opacity-10 text-success px-3 py-1 rounded-pill"><i class="bi bi-check-circle me-1"></i>Disponível</span>
-                                                            {% else %}
-                                                                <span class="badge bg-secondary">Inativo</span>
-                                                            {% endif %}
-                                                        {% endwith %}
-                                                    </td>
-                                                    <td>
-                                                        <div class="d-flex align-items-center">
-                                                            <div class="progress flex-grow-1 me-2" style="height:6px; width:60px;">
-                                                                <div class="progress-bar bg-success" style="width: 70%"></div>
+                                                            <div class="bg-light rounded-3 p-2 me-3">
+                                                                <i class="bi bi-truck-front fs-5 text-primary"></i>
                                                             </div>
-                                                            <small>70%</small>
+                                                            <span class="fw-medium">{{ item.vehicle.model }}</span>
                                                         </div>
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge bg-light text-dark">{{ item.vehicle.plate }}</span>
+                                                    </td>
+                                                    <td>
+                                                        {{ item.vehicle.odometer|default:"—" }} km
+                                                    </td>
+                                                    <td>
+                                                        {% if item.active_driver %}
+                                                            {{ item.active_driver }}
+                                                        {% else %}
+                                                            <span class="text-muted">—</span>
+                                                        {% endif %}
+                                                    </td>
+                                                    <td>
+                                                        {% if item.in_trip %}
+                                                            <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-1 rounded-pill">
+                                                                <i class="bi bi-truck me-1"></i>Em viagem
+                                                            </span>
+                                                        {% elif item.vehicle.is_active %}
+                                                            <span class="badge bg-success bg-opacity-10 text-success px-3 py-1 rounded-pill">
+                                                                <i class="bi bi-check-circle me-1"></i>Disponível
+                                                            </span>
+                                                        {% else %}
+                                                            <span class="badge bg-secondary">Inativo</span>
+                                                        {% endif %}
+                                                    </td>
+                                                    <td>
+                                                        {# fuel_pct vem da view (0-100). Exibe "—" se não disponível. #}
+                                                        {% if item.fuel_pct is not None %}
+                                                            <div class="d-flex align-items-center">
+                                                                <div class="progress flex-grow-1 me-2" style="height:6px; width:60px;">
+                                                                    <div class="progress-bar
+                                                                        {% if item.fuel_pct < 25 %}bg-danger
+                                                                        {% elif item.fuel_pct < 50 %}bg-warning
+                                                                        {% else %}bg-success{% endif %}"
+                                                                        style="width: {{ item.fuel_pct }}%">
+                                                                    </div>
+                                                                </div>
+                                                                <small>{{ item.fuel_pct }}%</small>
+                                                            </div>
+                                                        {% else %}
+                                                            <span class="text-muted small">—</span>
+                                                        {% endif %}
                                                     </td>
                                                 </tr>
                                                 {% empty %}
-                                                <tr><td colspan="6" class="text-center py-3">Nenhum veículo cadastrado.</td></tr>
+                                                <tr>
+                                                    <td colspan="6" class="text-center py-3 text-muted">Nenhum veículo cadastrado.</td>
+                                                </tr>
                                                 {% endfor %}
                                             </tbody>
                                         </table>
@@ -310,6 +334,7 @@
                                 </div>
                             </div>
                         </div>
+
                         <div class="col-lg-4">
                             <div class="card border-0 shadow-sm">
                                 <div class="card-header bg-white border-0 pt-3">
@@ -339,11 +364,16 @@
                                             </div>
                                         </li>
                                         {% empty %}
-                                        <li class="list-group-item text-center py-3 text-muted">Nenhum alerta no momento.</li>
+                                        <li class="list-group-item text-center py-3 text-muted">
+                                            <i class="bi bi-check-circle-fill text-success d-block fs-4 mb-2"></i>
+                                            Nenhum alerta no momento.
+                                        </li>
                                         {% endfor %}
                                     </ul>
                                     <div class="mt-3">
-                                        <a href="#" class="btn btn-outline-secondary w-100">Ver todos os alertas</a>
+                                        <a href="{% url 'accounts:notificacoes' %}" class="btn btn-outline-secondary w-100">
+                                            Ver todos os alertas
+                                        </a>
                                     </div>
                                 </div>
                             </div>
@@ -360,25 +390,22 @@
         </div>
     </div>
 
-    <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
-    <!-- Dados para o JavaScript -->
     {{ consumption_labels|json_script:"consumption-labels" }}
     {{ consumption_data|json_script:"consumption-data" }}
 
-    <!-- Script inline da dashboard (gráfico + mapa) -->
     <script>
-        (function() {
+        (function () {
             // ---------- GRÁFICO DE CONSUMO ----------
             const labelsElem = document.getElementById('consumption-labels');
-            const dataElem = document.getElementById('consumption-data');
+            const dataElem   = document.getElementById('consumption-data');
             if (labelsElem && dataElem) {
                 const labels = JSON.parse(labelsElem.textContent);
-                const data = JSON.parse(dataElem.textContent);
-                const ctx = document.getElementById('fuelConsumptionChart').getContext('2d');
+                const data   = JSON.parse(dataElem.textContent);
+                const ctx    = document.getElementById('fuelConsumptionChart').getContext('2d');
                 new Chart(ctx, {
                     type: 'line',
                     data: {
@@ -387,7 +414,7 @@
                             label: 'Litros',
                             data: data,
                             borderColor: '#0d6efd',
-                            backgroundColor: 'rgba(13, 110, 253, 0.02)',
+                            backgroundColor: 'rgba(13, 110, 253, 0.05)',
                             borderWidth: 3,
                             pointBackgroundColor: '#0d6efd',
                             pointBorderColor: '#fff',
@@ -402,7 +429,11 @@
                         maintainAspectRatio: false,
                         plugins: { legend: { display: false } },
                         scales: {
-                            y: { beginAtZero: true, grid: { color: '#e9ecef' }, title: { display: true, text: 'Litros' } },
+                            y: {
+                                beginAtZero: true,
+                                grid: { color: '#e9ecef' },
+                                title: { display: true, text: 'Litros' }
+                            },
                             x: { grid: { display: false } }
                         }
                     }
@@ -413,27 +444,29 @@
             const mapDiv = document.getElementById('vehicleMap');
             if (mapDiv) {
                 mapDiv.style.height = '220px';
-                mapDiv.style.width = '100%';
-                mapDiv.style.backgroundColor = '#e9e9e9';
+                mapDiv.style.width  = '100%';
 
                 const map = L.map('vehicleMap').setView([-23.5505, -46.6333], 10);
                 L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
                     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                 }).addTo(map);
 
+                // Substitua mockLocations por dados reais via json_script quando tiver GPS
                 const mockLocations = [
-                    { plate: 'ABC-1234', driver: 'João M.', lat: -23.561, lng: -46.655, status: 'moving' },
-                    { plate: 'DEF-5678', driver: 'Ana P.', lat: -23.580, lng: -46.610, status: 'idle' }
+                    { plate: 'ABC-1234', driver: 'João M.',  lat: -23.561, lng: -46.655, status: 'moving' },
+                    { plate: 'DEF-5678', driver: 'Ana P.',   lat: -23.580, lng: -46.610, status: 'idle'   }
                 ];
-                mockLocations.forEach(v => {
-                    let color = v.status === 'moving' ? '#28a745' : '#ffc107';
-                    const icon = L.divIcon({
+
+                mockLocations.forEach(function (v) {
+                    const color = v.status === 'moving' ? '#28a745' : '#ffc107';
+                    const icon  = L.divIcon({
                         html: `<i class="bi bi-truck" style="font-size:1.8rem;color:${color};-webkit-text-stroke:1px white;"></i>`,
                         className: 'custom-marker',
-                        iconSize: [30, 30],
+                        iconSize:  [30, 30],
                         popupAnchor: [0, -15]
                     });
-                    L.marker([v.lat, v.lng], { icon }).addTo(map)
+                    L.marker([v.lat, v.lng], { icon })
+                        .addTo(map)
                         .bindPopup(`<b>${v.plate}</b><br>${v.driver}`);
                 });
             }

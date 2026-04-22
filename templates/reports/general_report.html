@@ -1,0 +1,131 @@
+{% extends 'base.html' %}
+
+{% block title %}Relatório Geral · FleetISP{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-clipboard-data me-2"></i>Relatório Geral</h2>
+    <a href="{% url 'reports:dashboard' %}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left me-1"></i> Voltar
+    </a>
+</div>
+
+<!-- Filtros -->
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label">Data Inicial</label>
+                <input type="date" name="date_from" class="form-control" value="{{ date_from|date:'Y-m-d' }}">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Data Final</label>
+                <input type="date" name="date_to" class="form-control" value="{{ date_to|date:'Y-m-d' }}">
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="bi bi-search me-1"></i> Filtrar
+                </button>
+            </div>
+            <div class="col-md-2">
+                <a href="{% url 'reports:general_excel' %}?date_from={{ date_from|date:'Y-m-d' }}&date_to={{ date_to|date:'Y-m-d' }}" class="btn btn-success w-100">
+                    <i class="bi bi-file-earmark-excel me-1"></i> Excel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Resumo Geral -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm text-center h-100">
+            <div class="card-body">
+                <i class="bi bi-fuel-pump fs-2 text-warning mb-2"></i>
+                <small class="text-muted d-block">Custo Combustível</small>
+                <h5 class="text-warning mb-0">R$ {{ fuel_cost|floatformat:2 }}</h5>
+                <small class="text-muted">{{ fuel_liters|floatformat:1 }} L · {{ fuel_count }} abastec.</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm text-center h-100">
+            <div class="card-body">
+                <i class="bi bi-map fs-2 text-info mb-2"></i>
+                <small class="text-muted d-block">Viagens</small>
+                <h5 class="text-info mb-0">{{ trip_count }} viagens</h5>
+                <small class="text-muted">{{ total_distance }} km percorridos</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm text-center h-100">
+            <div class="card-body">
+                <i class="bi bi-tools fs-2 text-danger mb-2"></i>
+                <small class="text-muted d-block">Custo Manutenção</small>
+                <h5 class="text-danger mb-0">R$ {{ maint_cost|floatformat:2 }}</h5>
+                <small class="text-muted">{{ maint_count }} manutenções</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm text-center h-100 border-success">
+            <div class="card-body">
+                <i class="bi bi-cash-stack fs-2 text-success mb-2"></i>
+                <small class="text-muted d-block">Custo Total</small>
+                <h5 class="text-success mb-0">R$ {{ total_cost|floatformat:2 }}</h5>
+                <small class="text-muted">Combustível + Manutenção</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Links para relatórios detalhados -->
+<div class="row g-3">
+    <div class="col-md-4">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white fw-semibold">
+                <i class="bi bi-fuel-pump me-1 text-warning"></i> Combustível
+            </div>
+            <div class="card-body text-center">
+                <a href="{% url 'reports:fuel' %}?date_from={{ date_from|date:'Y-m-d' }}&date_to={{ date_to|date:'Y-m-d' }}" class="btn btn-outline-warning btn-sm me-2">
+                    <i class="bi bi-eye me-1"></i> Ver detalhes
+                </a>
+                <a href="{% url 'reports:fuel_excel' %}?date_from={{ date_from|date:'Y-m-d' }}&date_to={{ date_to|date:'Y-m-d' }}" class="btn btn-outline-success btn-sm">
+                    <i class="bi bi-file-earmark-excel me-1"></i> Excel
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white fw-semibold">
+                <i class="bi bi-map me-1 text-info"></i> Viagens
+            </div>
+            <div class="card-body text-center">
+                <a href="{% url 'reports:trips' %}?date_from={{ date_from|date:'Y-m-d' }}&date_to={{ date_to|date:'Y-m-d' }}" class="btn btn-outline-info btn-sm me-2">
+                    <i class="bi bi-eye me-1"></i> Ver detalhes
+                </a>
+                <a href="{% url 'reports:trips_excel' %}?date_from={{ date_from|date:'Y-m-d' }}&date_to={{ date_to|date:'Y-m-d' }}" class="btn btn-outline-success btn-sm">
+                    <i class="bi bi-file-earmark-excel me-1"></i> Excel
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white fw-semibold">
+                <i class="bi bi-tools me-1 text-danger"></i> Manutenção
+            </div>
+            <div class="card-body text-center">
+                <a href="{% url 'reports:maintenance' %}?date_from={{ date_from|date:'Y-m-d' }}&date_to={{ date_to|date:'Y-m-d' }}" class="btn btn-outline-danger btn-sm me-2">
+                    <i class="bi bi-eye me-1"></i> Ver detalhes
+                </a>
+                <a href="{% url 'reports:maintenance_excel' %}?date_from={{ date_from|date:'Y-m-d' }}&date_to={{ date_to|date:'Y-m-d' }}" class="btn btn-outline-success btn-sm">
+                    <i class="bi bi-file-earmark-excel me-1"></i> Excel
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

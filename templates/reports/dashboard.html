@@ -1,0 +1,111 @@
+{% extends 'base.html' %}
+
+{% block title %}Relatórios · FleetISP{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-file-earmark-bar-graph me-2"></i>Relatórios</h2>
+    <small class="text-muted">Referência: {{ today|date:"d/m/Y" }}</small>
+</div>
+
+<!-- Resumo do mês -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="rounded-circle bg-warning bg-opacity-10 p-3 me-3">
+                        <i class="bi bi-fuel-pump fs-4 text-warning"></i>
+                    </div>
+                    <div>
+                        <small class="text-muted">Combustível (mês)</small>
+                        <h5 class="mb-0">R$ {{ fuel_month_total|floatformat:2 }}</h5>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="rounded-circle bg-info bg-opacity-10 p-3 me-3">
+                        <i class="bi bi-map fs-4 text-info"></i>
+                    </div>
+                    <div>
+                        <small class="text-muted">Viagens (mês)</small>
+                        <h5 class="mb-0">{{ trips_month_count }} viagens</h5>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="rounded-circle bg-danger bg-opacity-10 p-3 me-3">
+                        <i class="bi bi-tools fs-4 text-danger"></i>
+                    </div>
+                    <div>
+                        <small class="text-muted">Manutenção (mês)</small>
+                        <h5 class="mb-0">R$ {{ maintenance_month_cost|floatformat:2 }}</h5>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Cards de relatórios -->
+<div class="row g-3">
+    <div class="col-md-6 col-lg-3">
+        <div class="card shadow-sm border-0 h-100 text-center">
+            <div class="card-body p-4">
+                <i class="bi bi-fuel-pump display-4 text-warning mb-3"></i>
+                <h5 class="card-title">Combustível</h5>
+                <p class="text-muted small">Consumo, custos e histórico de abastecimentos por período e veículo.</p>
+                <a href="{% url 'reports:fuel' %}" class="btn btn-outline-warning btn-sm w-100 mt-2">
+                    <i class="bi bi-arrow-right me-1"></i> Acessar
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="card shadow-sm border-0 h-100 text-center">
+            <div class="card-body p-4">
+                <i class="bi bi-map display-4 text-info mb-3"></i>
+                <h5 class="card-title">Viagens</h5>
+                <p class="text-muted small">Distâncias, destinos, motoristas e ordens de serviço por período.</p>
+                <a href="{% url 'reports:trips' %}" class="btn btn-outline-info btn-sm w-100 mt-2">
+                    <i class="bi bi-arrow-right me-1"></i> Acessar
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="card shadow-sm border-0 h-100 text-center">
+            <div class="card-body p-4">
+                <i class="bi bi-tools display-4 text-danger mb-3"></i>
+                <h5 class="card-title">Manutenção</h5>
+                <p class="text-muted small">Histórico de manutenções, custos e tipos por veículo e período.</p>
+                <a href="{% url 'reports:maintenance' %}" class="btn btn-outline-danger btn-sm w-100 mt-2">
+                    <i class="bi bi-arrow-right me-1"></i> Acessar
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="card shadow-sm border-0 h-100 text-center">
+            <div class="card-body p-4">
+                <i class="bi bi-clipboard-data display-4 text-success mb-3"></i>
+                <h5 class="card-title">Relatório Geral</h5>
+                <p class="text-muted small">Visão consolidada de todos os módulos com exportação completa.</p>
+                <a href="{% url 'reports:general' %}" class="btn btn-outline-success btn-sm w-100 mt-2">
+                    <i class="bi bi-arrow-right me-1"></i> Acessar
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

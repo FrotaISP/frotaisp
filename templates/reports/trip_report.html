@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+
+{% block title %}Relatório de Viagens · FleetISP{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-map me-2"></i>Relatório de Viagens</h2>
+    <a href="{% url 'reports:dashboard' %}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left me-1"></i> Voltar
+    </a>
+</div>
+
+<!-- Filtros -->
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label">Data Inicial</label>
+                <input type="date" name="date_from" class="form-control" value="{{ date_from|date:'Y-m-d' }}">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Data Final</label>
+                <input type="date" name="date_to" class="form-control" value="{{ date_to|date:'Y-m-d' }}">
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="bi bi-search me-1"></i> Filtrar
+                </button>
+            </div>
+            <div class="col-md-2">
+                <a href="{% url 'reports:trips_excel' %}?date_from={{ date_from|date:'Y-m-d' }}&date_to={{ date_to|date:'Y-m-d' }}" class="btn btn-success w-100">
+                    <i class="bi bi-file-earmark-excel me-1"></i> Excel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Totalizadores -->
+<div class="row g-3 mb-4">
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm text-center">
+            <div class="card-body">
+                <small class="text-muted">Total de Viagens</small>
+                <h4 class="text-info mb-0">{{ count }}</h4>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm text-center">
+            <div class="card-body">
+                <small class="text-muted">Distância Total</small>
+                <h4 class="mb-0">{{ total_distance }} km</h4>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabela -->
+<div class="card shadow-sm border-0">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Início</th>
+                        <th>Fim</th>
+                        <th>Veículo</th>
+                        <th>Motorista</th>
+                        <th>Destino</th>
+                        <th>Propósito</th>
+                        <th>Distância</th>
+                        <th>Nº OS</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for t in trips %}
+                    <tr>
+                        <td>{{ t.start_time|date:"d/m/Y H:i" }}</td>
+                        <td>{% if t.end_time %}{{ t.end_time|date:"d/m/Y H:i" }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
+                        <td>{{ t.vehicle }}</td>
+                        <td>{{ t.driver }}</td>
+                        <td>{{ t.destination }}</td>
+                        <td>{{ t.purpose }}</td>
+                        <td><strong>{{ t.distance }} km</strong></td>
+                        <td>{% if t.service_order %}{{ t.service_order }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-center text-muted py-4">Nenhuma viagem encontrada para o período.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
