@@ -148,14 +148,14 @@ class SubscriptionView(LoginRequiredMixin, View):
 
     def dispatch(self, request, *args, **kwargs):
         company = self.get_company()
-        profile = getattr(request.user, 'profile', None)
-        if not request.user.is_superuser and profile and not profile.can_manage_users():
-            messages.error(request, 'Apenas administradores podem alterar dados da assinatura.')
-            return redirect('dashboard:index')
         if not company:
             messages.error(request, 'Empresa nao encontrada para este usuario.')
             return redirect('dashboard:index')
         return super().dispatch(request, *args, **kwargs)
+
+    def can_manage_subscription(self):
+        profile = getattr(self.request.user, 'profile', None)
+        return self.request.user.is_superuser or bool(profile and profile.can_manage_users())
 
     def get_context(self, form=None):
         company = self.get_company()
@@ -164,6 +164,7 @@ class SubscriptionView(LoginRequiredMixin, View):
         return {
             'company': company,
             'form': form or CompanyBillingForm(instance=company),
+            'can_manage_subscription': self.can_manage_subscription(),
             'users_count': users_count,
             'vehicles_count': vehicles_count,
             'users_percent': company.usage_percent(users_count, company.max_users),
@@ -174,6 +175,9 @@ class SubscriptionView(LoginRequiredMixin, View):
         return render(request, self.template_name, self.get_context())
 
     def post(self, request):
+        if not self.can_manage_subscription():
+            messages.error(request, 'Apenas administradores podem alterar dados da assinatura.')
+            return redirect('accounts:subscription')
         company = self.get_company()
         form = CompanyBillingForm(request.POST, instance=company)
         if form.is_valid():
