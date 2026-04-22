@@ -1,0 +1,3 @@
+{% extends 'base.html' %}
+{% block title %}Excluir preventiva · FleetISP{% endblock %}
+{% block content %}<div class="card shadow-sm"><div class="card-body"><h2>Excluir plano preventivo</h2><p>Confirma excluir <strong>{{ object }}</strong>?</p><form method="post">{% csrf_token %}<button class="btn btn-danger">Excluir</button> <a href="{% url 'maintenance:plans' %}" class="btn btn-secondary">Cancelar</a></form></div></div>{% endblock %}
