@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% block title %}{% if object %}Editar pneu{% else %}Novo pneu{% endif %} · FleetISP{% endblock %}
+{% block content %}
+<h2 class="mb-4"><i class="bi bi-record-circle me-2"></i>{% if object %}Editar pneu {{ object.code }}{% else %}Novo pneu{% endif %}</h2>
+<div class="card shadow-sm"><div class="card-body">
+<form method="post" novalidate>{% csrf_token %}
+{% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+<div class="row"><div class="col-md-4 mb-3"><label class="form-label">Codigo *</label>{{ form.code }}{{ form.code.errors }}</div><div class="col-md-4 mb-3"><label class="form-label">Marca *</label>{{ form.brand }}{{ form.brand.errors }}</div><div class="col-md-4 mb-3"><label class="form-label">Modelo</label>{{ form.model }}{{ form.model.errors }}</div></div>
+<div class="row"><div class="col-md-3 mb-3"><label class="form-label">Medida</label>{{ form.size }}{{ form.size.errors }}</div><div class="col-md-3 mb-3"><label class="form-label">Compra</label>{{ form.purchase_date }}{{ form.purchase_date.errors }}</div><div class="col-md-3 mb-3"><label class="form-label">Custo</label>{{ form.purchase_cost }}{{ form.purchase_cost.errors }}</div><div class="col-md-3 mb-3"><label class="form-label">Status</label>{{ form.status }}{{ form.status.errors }}</div></div>
+<div class="row"><div class="col-md-3 mb-3"><label class="form-label">Sulco inicial</label>{{ form.initial_tread_mm }}{{ form.initial_tread_mm.errors }}</div><div class="col-md-3 mb-3"><label class="form-label">Sulco atual</label>{{ form.current_tread_mm }}{{ form.current_tread_mm.errors }}</div><div class="col-md-3 mb-3"><label class="form-label">Veiculo atual</label>{{ form.current_vehicle }}{{ form.current_vehicle.errors }}</div><div class="col-md-3 mb-3"><label class="form-label">Km instalacao</label>{{ form.installed_odometer }}{{ form.installed_odometer.errors }}</div></div>
+<div class="mb-3"><label class="form-label">Posicao</label>{{ form.position }}{{ form.position.errors }}</div>
+<div class="mb-3"><label class="form-label">Observacoes</label>{{ form.notes }}{{ form.notes.errors }}</div>
+<button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Salvar</button>
+<a href="{% url 'vehicles:tires' %}" class="btn btn-secondary">Cancelar</a>
+</form></div></div>
+{% endblock %}
