@@ -153,3 +153,102 @@ class VehicleChecklist(TimeStampedModel):
             self.vehicle.current_odometer = self.odometer
             self.vehicle.save(update_fields=['current_odometer', 'updated_at'])
         super().save(*args, **kwargs)
+
+
+class Tire(TimeStampedModel):
+    STATUS_CHOICES = [
+        ('stock', 'Em estoque'),
+        ('installed', 'Instalado'),
+        ('repair', 'Em reparo'),
+        ('retread', 'Recapagem'),
+        ('retired', 'Descartado'),
+    ]
+
+    company = models.ForeignKey('accounts.Company', on_delete=models.PROTECT, related_name='tires', verbose_name='Empresa')
+    code = models.CharField('Codigo', max_length=60)
+    brand = models.CharField('Marca', max_length=80)
+    model = models.CharField('Modelo', max_length=80, blank=True)
+    size = models.CharField('Medida', max_length=40, blank=True)
+    purchase_date = models.DateField('Data de compra', null=True, blank=True)
+    purchase_cost = models.DecimalField('Custo de compra', max_digits=10, decimal_places=2, default=0)
+    initial_tread_mm = models.DecimalField('Sulco inicial (mm)', max_digits=5, decimal_places=2, null=True, blank=True)
+    current_tread_mm = models.DecimalField('Sulco atual (mm)', max_digits=5, decimal_places=2, null=True, blank=True)
+    current_vehicle = models.ForeignKey(Vehicle, on_delete=models.SET_NULL, related_name='tires', verbose_name='Veiculo atual', null=True, blank=True)
+    position = models.CharField('Posicao', max_length=40, blank=True)
+    installed_odometer = models.IntegerField('Km de instalacao', null=True, blank=True)
+    status = models.CharField('Status', max_length=20, choices=STATUS_CHOICES, default='stock')
+    notes = models.TextField('Observacoes', blank=True)
+
+    class Meta:
+        verbose_name = 'Pneu'
+        verbose_name_plural = 'Pneus'
+        ordering = ['code']
+        constraints = [
+            models.UniqueConstraint(fields=['company', 'code'], name='unique_tire_code_per_company'),
+        ]
+
+    def __str__(self):
+        return f'{self.code} - {self.brand}'
+
+    @property
+    def km_used(self):
+        if self.current_vehicle_id and self.installed_odometer is not None:
+            return max(self.current_vehicle.current_odometer - self.installed_odometer, 0)
+        return 0
+
+
+class TireEvent(TimeStampedModel):
+    EVENT_TYPES = [
+        ('install', 'Instalacao'),
+        ('rotation', 'Rodizio'),
+        ('removal', 'Remocao'),
+        ('repair', 'Reparo'),
+        ('retread', 'Recapagem'),
+        ('retire', 'Descarte'),
+    ]
+
+    company = models.ForeignKey('accounts.Company', on_delete=models.PROTECT, related_name='tire_events', verbose_name='Empresa')
+    tire = models.ForeignKey(Tire, on_delete=models.CASCADE, related_name='events', verbose_name='Pneu')
+    vehicle = models.ForeignKey(Vehicle, on_delete=models.PROTECT, related_name='tire_events', verbose_name='Veiculo', null=True, blank=True)
+    event_type = models.CharField('Tipo', max_length=20, choices=EVENT_TYPES)
+    date = models.DateField('Data', default=timezone.localdate)
+    odometer = models.IntegerField('Hodometro', null=True, blank=True)
+    position = models.CharField('Posicao', max_length=40, blank=True)
+    tread_mm = models.DecimalField('Sulco medido (mm)', max_digits=5, decimal_places=2, null=True, blank=True)
+    cost = models.DecimalField('Custo', max_digits=10, decimal_places=2, default=0)
+    notes = models.TextField('Observacoes', blank=True)
+
+    class Meta:
+        verbose_name = 'Evento de Pneu'
+        verbose_name_plural = 'Eventos de Pneus'
+        ordering = ['-date', '-created_at']
+
+    def __str__(self):
+        return f'{self.tire.code} - {self.get_event_type_display()} - {self.date:%d/%m/%Y}'
+
+    def save(self, *args, **kwargs):
+        if not self.company_id and self.tire_id:
+            self.company = self.tire.company
+        super().save(*args, **kwargs)
+        tire = self.tire
+        if self.tread_mm is not None:
+            tire.current_tread_mm = self.tread_mm
+        if self.event_type in ('install', 'rotation'):
+            tire.current_vehicle = self.vehicle
+            tire.position = self.position
+            tire.status = 'installed'
+            if self.odometer is not None:
+                tire.installed_odometer = self.odometer
+        elif self.event_type == 'removal':
+            tire.current_vehicle = None
+            tire.position = ''
+            tire.status = 'stock'
+        elif self.event_type == 'repair':
+            tire.status = 'repair'
+        elif self.event_type == 'retread':
+            tire.status = 'retread'
+        elif self.event_type == 'retire':
+            tire.current_vehicle = None
+            tire.position = ''
+            tire.status = 'retired'
+        tire.save(update_fields=['current_tread_mm', 'current_vehicle', 'position', 'status', 'installed_odometer', 'updated_at'])
