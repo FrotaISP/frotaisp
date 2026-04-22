@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block title %}{% if object %}Editar documento{% else %}Novo documento{% endif %} · FleetISP{% endblock %}
+{% block content %}
+<h2 class="mb-4"><i class="bi bi-file-earmark-text me-2"></i>{% if object %}Editar documento{% else %}Novo documento{% endif %}</h2>
+<div class="card shadow-sm"><div class="card-body">
+<form method="post" enctype="multipart/form-data" novalidate>{% csrf_token %}
+{% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+<div class="row"><div class="col-md-6 mb-3"><label class="form-label">Veiculo</label>{{ form.vehicle }}{{ form.vehicle.errors }}</div><div class="col-md-6 mb-3"><label class="form-label">Motorista</label>{{ form.driver }}{{ form.driver.errors }}</div></div>
+<div class="row"><div class="col-md-4 mb-3"><label class="form-label">Tipo</label>{{ form.document_type }}{{ form.document_type.errors }}</div><div class="col-md-5 mb-3"><label class="form-label">Titulo</label>{{ form.title }}{{ form.title.errors }}</div><div class="col-md-3 mb-3"><label class="form-label">Numero</label>{{ form.number }}{{ form.number.errors }}</div></div>
+<div class="row"><div class="col-md-4 mb-3"><label class="form-label">Emissao</label>{{ form.issue_date }}{{ form.issue_date.errors }}</div><div class="col-md-4 mb-3"><label class="form-label">Vencimento</label>{{ form.expiration_date }}{{ form.expiration_date.errors }}</div><div class="col-md-4 mb-3"><label class="form-label">Arquivo</label>{{ form.file }}{{ form.file.errors }}</div></div>
+<div class="mb-3"><label class="form-label">Observacoes</label>{{ form.notes }}{{ form.notes.errors }}</div>
+<div class="form-check mb-3">{{ form.is_active }} <label class="form-check-label">Ativo</label></div>
+<button type="submit" class="btn btn-primary">Salvar</button> <a href="{% url 'vehicles:documents' %}" class="btn btn-secondary">Cancelar</a>
+</form></div></div>
+{% endblock %}
