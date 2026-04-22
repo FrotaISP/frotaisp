@@ -44,6 +44,11 @@
             <a class="nav-link {% if request.resolver_match.url_name == 'expenses' %}active{% endif %}" href="{% url 'maintenance:expenses' %}">
                 <i class="bi bi-cash-coin"></i> Financeiro
             </a>
+            {% if user_profile.is_admin %}
+            <a class="nav-link {% if request.resolver_match.url_name == 'subscription' %}active{% endif %}" href="{% url 'accounts:subscription' %}">
+                <i class="bi bi-credit-card"></i> Assinatura
+            </a>
+            {% endif %}
             <a class="nav-link {% if request.resolver_match.app_name == 'reports' %}active{% endif %}" href="{% url 'reports:dashboard' %}">
                 <i class="bi bi-file-earmark-bar-graph"></i> Relatorios
             </a>
