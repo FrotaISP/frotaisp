@@ -6,11 +6,19 @@ from apps.drivers.models import Driver
 
 
 class Trip(TimeStampedModel):
+    company = models.ForeignKey(
+        'accounts.Company',
+        on_delete=models.PROTECT,
+        related_name='trips',
+        verbose_name='Empresa',
+        null=True,
+        blank=True,
+    )
     vehicle = models.ForeignKey(
         Vehicle,
         on_delete=models.PROTECT,
         related_name='trips',
-        verbose_name='Veículo'
+        verbose_name='Veiculo'
     )
     driver = models.ForeignKey(
         Driver,
@@ -18,13 +26,13 @@ class Trip(TimeStampedModel):
         related_name='trips',
         verbose_name='Motorista'
     )
-    start_time = models.DateTimeField('Início')
+    start_time = models.DateTimeField('Inicio')
     end_time = models.DateTimeField('Fim', null=True, blank=True)
     start_odometer = models.IntegerField('Km Inicial')
     end_odometer = models.IntegerField('Km Final', null=True, blank=True)
     destination = models.CharField('Destino', max_length=255)
-    purpose = models.TextField('Propósito')
-    service_order = models.CharField('Nº OS', max_length=50, blank=True)
+    purpose = models.TextField('Proposito')
+    service_order = models.CharField('No OS', max_length=50, blank=True)
 
     class Meta:
         verbose_name = 'Viagem'
@@ -40,6 +48,8 @@ class Trip(TimeStampedModel):
         return 0
 
     def save(self, *args, **kwargs):
+        if not self.company_id and self.vehicle_id:
+            self.company = self.vehicle.company
         super().save(*args, **kwargs)
 
         latest_odometer = self.end_odometer or self.start_odometer
