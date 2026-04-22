@@ -5,14 +5,20 @@
             <h4 class="text-white fw-bold mb-0">
                 <i class="bi bi-truck me-2"></i>Fleet<span class="fw-light">ISP</span>
             </h4>
-            <small class="text-white-50">Gestão de Frotas · v1.0</small>
+            <small class="text-white-50">Gestao de Frotas · v1.0</small>
         </div>
         <nav class="nav flex-column mt-3">
             <a class="nav-link {% if request.resolver_match.app_name == 'dashboard' %}active{% endif %}" href="{% url 'dashboard:index' %}">
                 <i class="bi bi-speedometer2"></i> Dashboard
             </a>
-            <a class="nav-link {% if request.resolver_match.app_name == 'vehicles' %}active{% endif %}" href="{% url 'vehicles:list' %}">
-                <i class="bi bi-car-front"></i> Veículos
+            <a class="nav-link {% if request.resolver_match.app_name == 'vehicles' and request.resolver_match.url_name == 'list' %}active{% endif %}" href="{% url 'vehicles:list' %}">
+                <i class="bi bi-car-front"></i> Veiculos
+            </a>
+            <a class="nav-link {% if request.resolver_match.url_name == 'documents' %}active{% endif %}" href="{% url 'vehicles:documents' %}">
+                <i class="bi bi-file-earmark-text"></i> Documentos
+            </a>
+            <a class="nav-link {% if request.resolver_match.url_name == 'checklists' %}active{% endif %}" href="{% url 'vehicles:checklists' %}">
+                <i class="bi bi-clipboard-check"></i> Checklists
             </a>
             <a class="nav-link {% if request.resolver_match.app_name == 'drivers' %}active{% endif %}" href="{% url 'drivers:list' %}">
                 <i class="bi bi-person-badge"></i> Motoristas
@@ -21,13 +27,16 @@
                 <i class="bi bi-map"></i> Viagens
             </a>
             <a class="nav-link {% if request.resolver_match.app_name == 'fuel' %}active{% endif %}" href="{% url 'fuel:list' %}">
-                <i class="bi bi-fuel-pump"></i> Combustível
+                <i class="bi bi-fuel-pump"></i> Combustivel
             </a>
-            <a class="nav-link {% if request.resolver_match.app_name == 'maintenance' %}active{% endif %}" href="{% url 'maintenance:list' %}">
-                <i class="bi bi-tools"></i> Manutenções
+            <a class="nav-link {% if request.resolver_match.app_name == 'maintenance' and request.resolver_match.url_name == 'list' %}active{% endif %}" href="{% url 'maintenance:list' %}">
+                <i class="bi bi-tools"></i> Manutencoes
+            </a>
+            <a class="nav-link {% if request.resolver_match.url_name == 'plans' %}active{% endif %}" href="{% url 'maintenance:plans' %}">
+                <i class="bi bi-calendar2-check"></i> Preventivas
             </a>
             <a class="nav-link {% if request.resolver_match.app_name == 'reports' %}active{% endif %}" href="{% url 'reports:dashboard' %}">
-                <i class="bi bi-file-earmark-bar-graph"></i> Relatórios
+                <i class="bi bi-file-earmark-bar-graph"></i> Relatorios
             </a>
         </nav>
         <div class="mt-auto p-3 border-top border-secondary border-opacity-25">
