@@ -88,7 +88,7 @@ class CompanyIsolationTests(TestCase):
             company=self.company_b,
             plate='AAA1234',
             brand='Fiat',
-            model='Toro',
+            model='Strada',
             year=2024,
             fuel_type='F',
             current_odometer=1000,
