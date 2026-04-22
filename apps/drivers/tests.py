@@ -1,8 +1,14 @@
+from django.contrib.auth.models import User
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
+from django.urls import reverse
+from django.utils import timezone
 
 from apps.drivers.forms import DriverCreateForm, DriverUpdateForm
 from apps.accounts.models import UserProfile
+from apps.drivers.models import Driver
+from apps.vehicles.models import Vehicle
+from apps.trips.models import Trip
 
 
 class DriverCreateFormTests(TestCase):
@@ -84,3 +90,67 @@ class DriverCreateFormTests(TestCase):
 
         profile.refresh_from_db()
         self.assertEqual(profile.role, 'driver')
+
+
+class DriverViewIntegrationTests(TestCase):
+    def setUp(self):
+        self.operator = self.create_user('driver-operator', 'operator')
+        self.manager = self.create_user('driver-manager', 'manager')
+        self.driver_user = self.create_user('history-driver-user', 'driver')
+        self.history_driver = Driver.objects.create(
+            user=self.driver_user,
+            cnh='55555555555',
+            cnh_expiration='2030-01-01',
+            phone='(62) 97777-1111',
+        )
+        self.vehicle = Vehicle.objects.create(
+            plate='DRV1234',
+            brand='Fiat',
+            model='Toro',
+            year=2024,
+            fuel_type='F',
+            current_odometer=2000,
+        )
+
+    def create_user(self, username, role):
+        user = User.objects.create_user(username=username, password='senha123')
+        UserProfile.objects.update_or_create(user=user, defaults={'role': role})
+        return user
+
+    def test_operator_can_create_driver_via_view(self):
+        self.client.force_login(self.operator)
+
+        response = self.client.post(reverse('drivers:create'), data={
+            'first_name': 'Novo',
+            'last_name': 'Motorista',
+            'email': 'novo.motorista@example.com',
+            'username': 'novo.motorista',
+            'password': 'senha123',
+            'cnh': '66666666666',
+            'cnh_expiration': '2031-01-01',
+            'phone': '(62) 98888-1234',
+            'address': 'Rua Teste, 123',
+            'is_available': 'on',
+        })
+
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(Driver.objects.filter(cnh='66666666666').exists())
+
+    def test_manager_cannot_delete_driver_with_trip_history(self):
+        Trip.objects.create(
+            vehicle=self.vehicle,
+            driver=self.history_driver,
+            start_time=timezone.now(),
+            end_time=timezone.now(),
+            start_odometer=2000,
+            end_odometer=2100,
+            destination='Cliente',
+            purpose='Atendimento',
+            service_order='OS-300',
+        )
+
+        self.client.force_login(self.manager)
+        response = self.client.post(reverse('drivers:delete', args=[self.history_driver.pk]))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(Driver.objects.filter(pk=self.history_driver.pk).exists())
