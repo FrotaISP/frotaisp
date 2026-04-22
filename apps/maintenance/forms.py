@@ -1,9 +1,11 @@
 # apps/maintenance/forms.py
 from django import forms
 from django.utils import timezone
+from apps.core.mixins import scope_related_queryset_for_user
 from apps.core.uploads import ALLOWED_DOCUMENT_TYPES, validate_uploaded_file
 from .models import Maintenance
 from apps.fuel.models import FuelRecord
+from apps.vehicles.models import Vehicle
 
 
 class MaintenanceForm(forms.ModelForm):
@@ -26,16 +28,29 @@ class MaintenanceForm(forms.ModelForm):
             'invoice': forms.ClearableFileInput(attrs={'class': 'form-control'}),
         }
 
+    def __init__(self, *args, company=None, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.company = company or getattr(self.instance, 'company', None)
+        self.user = user
+        if user:
+            self.fields['vehicle'].queryset = scope_related_queryset_for_user(Vehicle.objects.filter(is_active=True), user)
+
+    def clean_vehicle(self):
+        vehicle = self.cleaned_data.get('vehicle')
+        if vehicle and self.company and vehicle.company_id and vehicle.company_id != self.company.id:
+            raise forms.ValidationError('Selecione um veiculo da sua empresa.')
+        return vehicle
+
     def clean_date(self):
         date = self.cleaned_data.get('date')
         if date and date > timezone.localdate():
-            raise forms.ValidationError('A data da manutenção não pode estar no futuro.')
+            raise forms.ValidationError('A data da manutencao nao pode estar no futuro.')
         return date
 
     def clean_cost(self):
         cost = self.cleaned_data.get('cost')
         if cost is not None and cost <= 0:
-            raise forms.ValidationError('O custo da manutenção deve ser maior que zero.')
+            raise forms.ValidationError('O custo da manutencao deve ser maior que zero.')
         return cost
 
     def clean_odometer(self):
@@ -47,8 +62,8 @@ class MaintenanceForm(forms.ModelForm):
 
             if odometer < current_km:
                 raise forms.ValidationError(
-                    f'O hodômetro informado ({odometer:,} km) é menor que o hodômetro '
-                    f'atual do veículo {vehicle.plate} ({current_km:,} km). '
+                    f'O hodometro informado ({odometer:,} km) e menor que o hodometro '
+                    f'atual do veiculo {vehicle.plate} ({current_km:,} km). '
                     f'Verifique o valor e tente novamente.'
                 )
 
@@ -61,7 +76,7 @@ class MaintenanceForm(forms.ModelForm):
             )
             if last_fuel and odometer < last_fuel:
                 raise forms.ValidationError(
-                    f'O hodômetro ({odometer:,} km) é menor que o do último '
+                    f'O hodometro ({odometer:,} km) e menor que o do ultimo '
                     f'abastecimento registrado ({last_fuel:,} km).'
                 )
 
@@ -70,11 +85,7 @@ class MaintenanceForm(forms.ModelForm):
     def clean_invoice(self):
         invoice = self.cleaned_data.get('invoice')
         try:
-            validate_uploaded_file(
-                invoice,
-                allowed_types=ALLOWED_DOCUMENT_TYPES,
-                label='O comprovante da manutenção',
-            )
+            validate_uploaded_file(invoice, allowed_types=ALLOWED_DOCUMENT_TYPES, label='O comprovante da manutencao')
         except ValueError as exc:
             raise forms.ValidationError(str(exc)) from exc
         return invoice
@@ -87,11 +98,18 @@ class MaintenanceForm(forms.ModelForm):
         next_alert_date = cleaned.get('next_alert_date')
 
         if next_km and odometer and next_km <= odometer:
-            raise forms.ValidationError(
-                'O km do próximo alerta deve ser maior que o hodômetro atual da manutenção.'
-            )
+            raise forms.ValidationError('O km do proximo alerta deve ser maior que o hodometro atual da manutencao.')
 
         if date and next_alert_date and next_alert_date <= date:
-            self.add_error('next_alert_date', 'A data do próximo alerta deve ser posterior à data da manutenção.')
+            self.add_error('next_alert_date', 'A data do proximo alerta deve ser posterior a data da manutencao.')
 
         return cleaned
+
+    def save(self, commit=True):
+        record = super().save(commit=False)
+        if self.company and not record.company_id:
+            record.company = self.company
+        if commit:
+            record.save()
+            self.save_m2m()
+        return record
