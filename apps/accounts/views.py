@@ -11,7 +11,7 @@ from django.contrib import messages
 from django.http import JsonResponse
 from django.utils.text import slugify
 
-from apps.core.mixins import AdminRequiredMixin, get_user_company
+from apps.core.mixins import AdminRequiredMixin, get_user_company, get_user_profile
 from .forms import (
     CompanyBillingForm, CustomAuthenticationForm, CustomUserCreationForm,
     UserEditForm, AdminPasswordResetForm, ProfileForm, UserSettingsForm,
@@ -146,16 +146,19 @@ class SubscriptionView(LoginRequiredMixin, View):
     def get_company(self):
         return get_user_company(self.request.user)
 
+    def can_access_subscription(self):
+        profile = get_user_profile(self.request.user)
+        return self.request.user.is_superuser or profile.is_manager
+
     def dispatch(self, request, *args, **kwargs):
         company = self.get_company()
+        if not self.can_access_subscription():
+            messages.error(request, 'Apenas gestores e administradores podem acessar a assinatura.')
+            return redirect('dashboard:index')
         if not company:
             messages.error(request, 'Empresa nao encontrada para este usuario.')
             return redirect('dashboard:index')
         return super().dispatch(request, *args, **kwargs)
-
-    def can_manage_subscription(self):
-        profile = getattr(self.request.user, 'profile', None)
-        return self.request.user.is_superuser or bool(profile and profile.can_manage_users())
 
     def get_context(self, form=None):
         company = self.get_company()
@@ -164,7 +167,7 @@ class SubscriptionView(LoginRequiredMixin, View):
         return {
             'company': company,
             'form': form or CompanyBillingForm(instance=company),
-            'can_manage_subscription': self.can_manage_subscription(),
+            'can_manage_subscription': True,
             'users_count': users_count,
             'vehicles_count': vehicles_count,
             'users_percent': company.usage_percent(users_count, company.max_users),
@@ -175,9 +178,6 @@ class SubscriptionView(LoginRequiredMixin, View):
         return render(request, self.template_name, self.get_context())
 
     def post(self, request):
-        if not self.can_manage_subscription():
-            messages.error(request, 'Apenas administradores podem alterar dados da assinatura.')
-            return redirect('accounts:subscription')
         company = self.get_company()
         form = CompanyBillingForm(request.POST, instance=company)
         if form.is_valid():
