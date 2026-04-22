@@ -3,7 +3,7 @@ from django import forms
 from django.utils import timezone
 from apps.core.mixins import scope_related_queryset_for_user
 from apps.core.uploads import ALLOWED_DOCUMENT_TYPES, validate_uploaded_file
-from .models import Maintenance
+from .models import Maintenance, PreventiveMaintenancePlan
 from apps.fuel.models import FuelRecord
 from apps.vehicles.models import Vehicle
 
@@ -113,3 +113,65 @@ class MaintenanceForm(forms.ModelForm):
             record.save()
             self.save_m2m()
         return record
+
+
+class PreventiveMaintenancePlanForm(forms.ModelForm):
+    class Meta:
+        model = PreventiveMaintenancePlan
+        fields = [
+            'vehicle', 'service_name', 'description', 'frequency_km', 'frequency_days',
+            'last_service_date', 'last_service_km', 'next_due_date', 'next_due_km',
+            'priority', 'status', 'notes'
+        ]
+        widgets = {
+            'vehicle': forms.Select(attrs={'class': 'form-select'}),
+            'service_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: Troca de oleo'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'frequency_km': forms.NumberInput(attrs={'class': 'form-control', 'min': '0'}),
+            'frequency_days': forms.NumberInput(attrs={'class': 'form-control', 'min': '0'}),
+            'last_service_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'last_service_km': forms.NumberInput(attrs={'class': 'form-control', 'min': '0'}),
+            'next_due_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'next_due_km': forms.NumberInput(attrs={'class': 'form-control', 'min': '0'}),
+            'priority': forms.Select(attrs={'class': 'form-select'}),
+            'status': forms.Select(attrs={'class': 'form-select'}),
+            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        }
+
+    def __init__(self, *args, company=None, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.company = company or getattr(self.instance, 'company', None)
+        if user:
+            self.fields['vehicle'].queryset = scope_related_queryset_for_user(Vehicle.objects.filter(is_active=True), user)
+
+    def clean_vehicle(self):
+        vehicle = self.cleaned_data.get('vehicle')
+        if vehicle and self.company and vehicle.company_id != self.company.id:
+            raise forms.ValidationError('Selecione um veiculo da sua empresa.')
+        return vehicle
+
+    def clean(self):
+        cleaned = super().clean()
+        frequency_km = cleaned.get('frequency_km')
+        frequency_days = cleaned.get('frequency_days')
+        next_due_km = cleaned.get('next_due_km')
+        last_service_km = cleaned.get('last_service_km')
+        next_due_date = cleaned.get('next_due_date')
+        last_service_date = cleaned.get('last_service_date')
+
+        if not frequency_km and not frequency_days and not next_due_km and not next_due_date:
+            raise forms.ValidationError('Informe uma recorrencia ou uma proxima data/km para o plano preventivo.')
+        if last_service_km and next_due_km and next_due_km <= last_service_km:
+            self.add_error('next_due_km', 'O proximo km deve ser maior que o km da ultima execucao.')
+        if last_service_date and next_due_date and next_due_date <= last_service_date:
+            self.add_error('next_due_date', 'A proxima data deve ser posterior a ultima execucao.')
+        return cleaned
+
+    def save(self, commit=True):
+        plan = super().save(commit=False)
+        if self.company and not plan.company_id:
+            plan.company = self.company
+        if commit:
+            plan.save()
+            self.save_m2m()
+        return plan
