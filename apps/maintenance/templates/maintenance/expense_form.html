@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+{% block title %}{% if object %}Editar despesa{% else %}Nova despesa{% endif %} · FleetISP{% endblock %}
+{% block content %}
+<h2 class="mb-4"><i class="bi bi-cash-coin me-2"></i>{% if object %}Editar despesa{% else %}Nova despesa{% endif %}</h2>
+<div class="card shadow-sm"><div class="card-body"><form method="post" enctype="multipart/form-data" novalidate>{% csrf_token %}{% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+<div class="row"><div class="col-md-4 mb-3"><label class="form-label">Data *</label>{{ form.date }}{{ form.date.errors }}</div><div class="col-md-4 mb-3"><label class="form-label">Categoria *</label>{{ form.category }}{{ form.category.errors }}</div><div class="col-md-4 mb-3"><label class="form-label">Valor *</label>{{ form.amount }}{{ form.amount.errors }}</div></div>
+<div class="row"><div class="col-md-6 mb-3"><label class="form-label">Veiculo</label>{{ form.vehicle }}{{ form.vehicle.errors }}</div><div class="col-md-6 mb-3"><label class="form-label">Ordem de servico</label>{{ form.work_order }}{{ form.work_order.errors }}</div></div>
+<div class="mb-3"><label class="form-label">Descricao *</label>{{ form.description }}{{ form.description.errors }}</div>
+<div class="row"><div class="col-md-4 mb-3"><label class="form-label">Centro de custo</label>{{ form.cost_center }}{{ form.cost_center.errors }}</div><div class="col-md-4 mb-3"><label class="form-label">Fornecedor</label>{{ form.supplier }}{{ form.supplier.errors }}</div><div class="col-md-4 mb-3"><label class="form-label">Comprovante</label>{{ form.receipt }}{{ form.receipt.errors }}</div></div>
+<div class="mb-3"><label class="form-label">Observacoes</label>{{ form.notes }}{{ form.notes.errors }}</div>
+<button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Salvar</button> <a href="{% url 'maintenance:expenses' %}" class="btn btn-secondary">Cancelar</a>
+</form></div></div>
+{% endblock %}
