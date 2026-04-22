@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+{% block title %}Assinatura · FleetISP{% endblock %}
+{% block page_title %}<i class="bi bi-credit-card me-2 text-primary"></i>Assinatura e plano{% endblock %}
+{% block content %}
+<div class="row g-4">
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+                    <div>
+                        <span class="text-uppercase small text-muted fw-semibold">Plano atual</span>
+                        <h2 class="mb-1">{{ company.get_plan_display }}</h2>
+                        <p class="text-muted mb-0">{{ company.name }}</p>
+                    </div>
+                    <span class="badge fs-6 {% if company.has_active_access %}bg-success{% else %}bg-danger{% endif %}">{{ company.get_subscription_status_display }}</span>
+                </div>
+                <hr>
+                {% if company.is_trial %}
+                    {% if company.is_trial_expired %}
+                        <div class="alert alert-danger mb-0">Seu periodo de teste expirou. Ative um plano para liberar o uso operacional.</div>
+                    {% else %}
+                        <div class="alert alert-warning mb-0">Periodo de teste ativo. Restam {{ company.days_until_trial_end }} dias.</div>
+                    {% endif %}
+                {% elif company.subscription_ends_at %}
+                    <div class="alert alert-info mb-0">Assinatura valida ate {{ company.subscription_ends_at|date:'d/m/Y' }}.</div>
+                {% else %}
+                    <div class="alert alert-success mb-0">Assinatura ativa.</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white border-0 pt-3"><h5 class="fw-semibold mb-0">Uso do plano</h5></div>
+            <div class="card-body p-4">
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between mb-1"><strong>Usuarios</strong><span>{{ users_count }} / {% if company.max_users %}{{ company.max_users }}{% else %}Ilimitado{% endif %}</span></div>
+                    <div class="progress" style="height: 10px;"><div class="progress-bar" style="width: {{ users_percent }}%"></div></div>
+                </div>
+                <div>
+                    <div class="d-flex justify-content-between mb-1"><strong>Veiculos</strong><span>{{ vehicles_count }} / {% if company.max_vehicles %}{{ company.max_vehicles }}{% else %}Ilimitado{% endif %}</span></div>
+                    <div class="progress" style="height: 10px;"><div class="progress-bar bg-success" style="width: {{ vehicles_percent }}%"></div></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-0 pt-3"><h5 class="fw-semibold mb-0">Dados comerciais</h5></div>
+            <div class="card-body p-4">
+                <form method="post" novalidate>{% csrf_token %}
+                    {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+                    <div class="mb-3"><label class="form-label">Nome da empresa</label>{{ form.name }}{{ form.name.errors }}</div>
+                    <div class="row"><div class="col-md-6 mb-3"><label class="form-label">E-mail financeiro</label>{{ form.billing_email }}{{ form.billing_email.errors }}</div><div class="col-md-6 mb-3"><label class="form-label">CPF/CNPJ</label>{{ form.billing_document }}{{ form.billing_document.errors }}</div></div>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Salvar dados</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white border-0 pt-3"><h5 class="fw-semibold mb-0">Proximos passos comerciais</h5></div>
+            <div class="card-body p-4">
+                <p class="text-muted">Esta tela prepara o produto para venda SaaS. A troca real de plano e cobranca ainda deve ser conectada a um gateway como Stripe, Asaas, Mercado Pago ou outro provedor.</p>
+                <ul class="list-unstyled mb-0">
+                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Trial por empresa</li>
+                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Limites por plano</li>
+                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Bloqueio por assinatura</li>
+                    <li><i class="bi bi-circle text-muted me-2"></i>Pagamento online pendente</li>
+                </ul>
+            </div>
+        </div>
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-0 pt-3"><h5 class="fw-semibold mb-0">Planos base</h5></div>
+            <div class="card-body p-4 small">
+                <p><strong>Starter:</strong> ate 3 usuarios e 10 veiculos.</p>
+                <p><strong>Professional:</strong> ate 10 usuarios e 50 veiculos.</p>
+                <p class="mb-0"><strong>Enterprise:</strong> uso ilimitado, definido no admin.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
