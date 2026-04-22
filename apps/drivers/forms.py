@@ -150,4 +150,8 @@ class DriverUpdateForm(forms.ModelForm):
         driver.user.save()
         if commit:
             driver.save()
+            UserProfile.objects.update_or_create(
+                user=driver.user,
+                defaults={'role': 'driver'},
+            )
         return driver
