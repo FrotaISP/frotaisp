@@ -1,0 +1,5 @@
+{% extends 'base.html' %}
+{% block title %}Excluir pneu · FleetISP{% endblock %}
+{% block content %}
+<div class="card shadow-sm"><div class="card-body"><h2 class="text-danger mb-3"><i class="bi bi-trash me-2"></i>Excluir pneu</h2><p>Tem certeza que deseja excluir o pneu <strong>{{ object.code }}</strong>?</p><form method="post">{% csrf_token %}<button type="submit" class="btn btn-danger">Sim, excluir</button> <a href="{% url 'vehicles:tires' %}" class="btn btn-secondary">Cancelar</a></form></div></div>
+{% endblock %}
