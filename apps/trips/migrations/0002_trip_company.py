@@ -19,7 +19,7 @@ def assign_company_from_vehicle(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('accounts', '0001_initial'),
+        ('accounts', '0005_company_userprofile_company'),
         ('drivers', '0002_driver_company'),
         ('vehicles', '0002_vehicle_company'),
         ('trips', '0001_initial'),
