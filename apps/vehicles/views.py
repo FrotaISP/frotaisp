@@ -1,8 +1,10 @@
 # apps/vehicles/views.py
+from django.contrib import messages
+from django.shortcuts import redirect
 from django.urls import reverse_lazy
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
 from django.contrib.auth.mixins import LoginRequiredMixin
-from apps.core.mixins import OperatorRequiredMixin, ManagerRequiredMixin, ProtectedDeleteMixin, TenantFormMixin, TenantQuerySetMixin
+from apps.core.mixins import OperatorRequiredMixin, ManagerRequiredMixin, ProtectedDeleteMixin, TenantFormMixin, TenantQuerySetMixin, get_user_company
 from .models import Tire, TireEvent, Vehicle, VehicleChecklist, VehicleDocument
 from .forms import TireEventForm, TireForm, VehicleChecklistForm, VehicleDocumentForm, VehicleForm
 
@@ -25,6 +27,13 @@ class VehicleCreateView(TenantFormMixin, OperatorRequiredMixin, CreateView):
     form_class = VehicleForm
     template_name = 'vehicles/vehicle_form.html'
     success_url = reverse_lazy('vehicles:list')
+
+    def dispatch(self, request, *args, **kwargs):
+        company = get_user_company(request.user)
+        if company and not company.can_add_vehicle():
+            messages.error(request, 'Limite de veiculos do plano atingido. Atualize o plano para adicionar novos veiculos.')
+            return redirect('accounts:subscription')
+        return super().dispatch(request, *args, **kwargs)
 
 
 class VehicleUpdateView(TenantFormMixin, TenantQuerySetMixin, OperatorRequiredMixin, UpdateView):
