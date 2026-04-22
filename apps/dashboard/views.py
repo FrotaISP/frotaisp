@@ -1,9 +1,10 @@
 # apps/dashboard/views.py
-from django.shortcuts import render
+from django.contrib.auth.decorators import login_required
 from django.db.models import Sum, Q, F
+from django.http import JsonResponse
+from django.shortcuts import render
 from django.utils import timezone
 from datetime import timedelta
-from django.contrib.auth.decorators import login_required
 
 from apps.core.mixins import scope_queryset_for_user
 from apps.vehicles.models import Tire, Vehicle, VehicleChecklist, VehicleDocument
@@ -119,3 +120,46 @@ def dashboard_view(request):
         'alerts': alerts[:8],
     }
     return render(request, 'dashboard/index.html', context)
+
+
+@login_required
+def tracking_map_view(request):
+    vehicles_qs = scope_queryset_for_user(Vehicle.objects.filter(is_active=True), request.user)
+    context = {
+        'tracked_count': vehicles_qs.filter(latitude__isnull=False, longitude__isnull=False).count(),
+        'total_active_count': vehicles_qs.count(),
+    }
+    return render(request, 'dashboard/tracking_map.html', context)
+
+
+@login_required
+def tracking_positions_api(request):
+    vehicles_qs = scope_queryset_for_user(
+        Vehicle.objects.filter(is_active=True).select_related('current_driver', 'current_driver__user'),
+        request.user,
+    )
+    active_trip_vehicle_ids = set(
+        scope_queryset_for_user(Trip.objects.filter(end_time__isnull=True), request.user)
+        .values_list('vehicle_id', flat=True)
+    )
+    vehicles = []
+    for vehicle in vehicles_qs.order_by('plate'):
+        last_location_at = vehicle.last_location_at
+        vehicles.append({
+            'id': vehicle.id,
+            'plate': vehicle.plate,
+            'model': vehicle.model,
+            'brand': vehicle.brand,
+            'driver': str(vehicle.current_driver) if vehicle.current_driver_id else '',
+            'latitude': float(vehicle.latitude) if vehicle.latitude is not None else None,
+            'longitude': float(vehicle.longitude) if vehicle.longitude is not None else None,
+            'speed': float(vehicle.last_speed_kmh) if vehicle.last_speed_kmh is not None else None,
+            'heading': vehicle.heading_degrees,
+            'status': vehicle.tracking_status,
+            'in_trip': vehicle.id in active_trip_vehicle_ids,
+            'odometer': vehicle.current_odometer,
+            'source': vehicle.location_source,
+            'last_location_at': last_location_at.isoformat() if last_location_at else None,
+            'last_location_display': timezone.localtime(last_location_at).strftime('%d/%m/%Y %H:%M:%S') if last_location_at else 'Sem posicao',
+        })
+    return JsonResponse({'vehicles': vehicles, 'updated_at': timezone.now().isoformat()})
