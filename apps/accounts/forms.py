@@ -14,6 +14,7 @@ class CustomAuthenticationForm(AuthenticationForm):
     )
 
 
+
 class CustomUserCreationForm(UserCreationForm):
     email = forms.EmailField(
         required=True,
