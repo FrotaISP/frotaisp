@@ -2,7 +2,7 @@
 from django.urls import reverse_lazy
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
 from django.contrib.auth.mixins import LoginRequiredMixin
-from apps.core.mixins import OperatorRequiredMixin, ManagerRequiredMixin
+from apps.core.mixins import OperatorRequiredMixin, ManagerRequiredMixin, ProtectedDeleteMixin
 from .models import Vehicle
 from .forms import VehicleForm
 
@@ -34,7 +34,8 @@ class VehicleUpdateView(OperatorRequiredMixin, UpdateView):
     success_url = reverse_lazy('vehicles:list')
 
 
-class VehicleDeleteView(ManagerRequiredMixin, DeleteView):
+class VehicleDeleteView(ProtectedDeleteMixin, ManagerRequiredMixin, DeleteView):
     model = Vehicle
     template_name = 'vehicles/vehicle_confirm_delete.html'
     success_url = reverse_lazy('vehicles:list')
+    protected_error_message = 'Este veículo não pode ser excluído porque possui viagens, abastecimentos ou manutenções vinculadas.'
