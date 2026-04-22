@@ -44,7 +44,7 @@
             <a class="nav-link {% if request.resolver_match.url_name == 'expenses' %}active{% endif %}" href="{% url 'maintenance:expenses' %}">
                 <i class="bi bi-cash-coin"></i> Financeiro
             </a>
-            {% if user_profile.is_admin %}
+            {% if user_profile.is_manager %}
             <a class="nav-link {% if request.resolver_match.url_name == 'subscription' %}active{% endif %}" href="{% url 'accounts:subscription' %}">
                 <i class="bi bi-credit-card"></i> Assinatura
             </a>
