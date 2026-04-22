@@ -1,4 +1,5 @@
 from decimal import Decimal
+from unittest.mock import MagicMock, patch
 
 from django.contrib.auth.models import User
 from django.test import TestCase
@@ -84,6 +85,36 @@ class ReportViewTests(TestCase):
             response['Content-Type'],
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         )
+
+    @patch('apps.reports.views.render_to_string', return_value='<html>mock pdf</html>')
+    @patch('apps.reports.views.HTML')
+    def test_general_report_pdf_returns_pdf_response(self, html_class, render_mock):
+        html_instance = MagicMock()
+        html_instance.write_pdf.return_value = b'%PDF-mock'
+        html_class.return_value = html_instance
+
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('reports:general_pdf'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Content-Type'], 'application/pdf')
+        html_instance.write_pdf.assert_called_once()
+        render_mock.assert_called_once()
+
+    @patch('apps.reports.views.render_to_string', return_value='<html>mock pdf</html>')
+    @patch('apps.reports.views.HTML')
+    def test_fuel_report_pdf_returns_pdf_response(self, html_class, render_mock):
+        html_instance = MagicMock()
+        html_instance.write_pdf.return_value = b'%PDF-fuel'
+        html_class.return_value = html_instance
+
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('reports:fuel_pdf'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Content-Type'], 'application/pdf')
+        html_instance.write_pdf.assert_called_once()
+        render_mock.assert_called_once()
 
     def test_fuel_report_filters_by_vehicle(self):
         other_vehicle = Vehicle.objects.create(
