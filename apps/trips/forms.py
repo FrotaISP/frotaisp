@@ -1,4 +1,5 @@
 from django import forms
+from django.db.models import Q
 
 from .models import Trip
 
@@ -48,12 +49,12 @@ class TripForm(forms.ModelForm):
 
             if end_time:
                 conflicts = conflicts.filter(start_time__lte=end_time).filter(
-                    forms.models.Q(end_time__isnull=True) | forms.models.Q(end_time__gte=start_time)
+                    Q(end_time__isnull=True) | Q(end_time__gte=start_time)
                 )
             else:
                 conflicts = conflicts.filter(
-                    forms.models.Q(end_time__isnull=True) |
-                    forms.models.Q(end_time__gte=start_time)
+                    Q(end_time__isnull=True) |
+                    Q(end_time__gte=start_time)
                 )
 
             if conflicts.exists():
