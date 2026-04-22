@@ -40,6 +40,12 @@ class Vehicle(TimeStampedModel):
         related_name='assigned_vehicles',
         verbose_name='Motorista Atual'
     )
+    latitude = models.DecimalField('Latitude', max_digits=9, decimal_places=6, null=True, blank=True)
+    longitude = models.DecimalField('Longitude', max_digits=9, decimal_places=6, null=True, blank=True)
+    last_location_at = models.DateTimeField('Ultima posicao', null=True, blank=True)
+    last_speed_kmh = models.DecimalField('Velocidade atual (km/h)', max_digits=6, decimal_places=2, null=True, blank=True)
+    heading_degrees = models.PositiveSmallIntegerField('Direcao (graus)', null=True, blank=True)
+    location_source = models.CharField('Origem do rastreamento', max_length=80, blank=True)
 
     class Meta:
         verbose_name = 'Veiculo'
@@ -57,6 +63,23 @@ class Vehicle(TimeStampedModel):
 
     def __str__(self):
         return f"{self.plate} - {self.model}"
+
+    @property
+    def has_location(self):
+        return self.latitude is not None and self.longitude is not None
+
+    @property
+    def tracking_status(self):
+        if not self.has_location:
+            return 'no_signal'
+        if not self.last_location_at:
+            return 'unknown'
+        age_minutes = (timezone.now() - self.last_location_at).total_seconds() / 60
+        if age_minutes <= 5:
+            return 'online'
+        if age_minutes <= 30:
+            return 'delayed'
+        return 'offline'
 
 
 class VehicleDocument(TimeStampedModel):
