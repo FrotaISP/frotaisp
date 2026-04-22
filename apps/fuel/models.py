@@ -2,6 +2,7 @@
 from django.db import models
 from apps.core.models import TimeStampedModel
 
+
 class FuelRecord(TimeStampedModel):
     vehicle = models.ForeignKey(
         'vehicles.Vehicle',
@@ -25,6 +26,10 @@ class FuelRecord(TimeStampedModel):
     def save(self, *args, **kwargs):
         self.total_cost = self.liters * self.price_per_liter
         super().save(*args, **kwargs)
+
+        if self.odometer > self.vehicle.current_odometer:
+            self.vehicle.current_odometer = self.odometer
+            self.vehicle.save(update_fields=['current_odometer', 'updated_at'])
 
     def __str__(self):
         return f"{self.vehicle.plate} - {self.date} - {self.liters} L"
