@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% block title %}{% if object %}Editar OS{% else %}Nova OS{% endif %} · FleetISP{% endblock %}
+{% block content %}
+<h2 class="mb-4"><i class="bi bi-clipboard2-pulse me-2"></i>{% if object %}Editar OS #{{ object.pk }}{% else %}Nova ordem de servico{% endif %}</h2>
+<div class="card shadow-sm"><div class="card-body"><form method="post" enctype="multipart/form-data" novalidate>{% csrf_token %}{% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+<div class="row"><div class="col-md-6 mb-3"><label class="form-label">Titulo *</label>{{ form.title }}{{ form.title.errors }}</div><div class="col-md-3 mb-3"><label class="form-label">Categoria</label>{{ form.category }}{{ form.category.errors }}</div><div class="col-md-3 mb-3"><label class="form-label">Prioridade</label>{{ form.priority }}{{ form.priority.errors }}</div></div>
+<div class="row"><div class="col-md-4 mb-3"><label class="form-label">Veiculo *</label>{{ form.vehicle }}{{ form.vehicle.errors }}</div><div class="col-md-4 mb-3"><label class="form-label">Motorista</label>{{ form.driver }}{{ form.driver.errors }}</div><div class="col-md-4 mb-3"><label class="form-label">Status</label>{{ form.status }}{{ form.status.errors }}</div></div>
+<div class="row"><div class="col-md-4 mb-3"><label class="form-label">Data agendada</label>{{ form.scheduled_date }}{{ form.scheduled_date.errors }}</div><div class="col-md-4 mb-3"><label class="form-label">Hodometro</label>{{ form.odometer }}{{ form.odometer.errors }}</div><div class="col-md-4 mb-3"><label class="form-label">Anexo</label>{{ form.attachment }}{{ form.attachment.errors }}</div></div>
+<div class="row"><div class="col-md-6 mb-3"><label class="form-label">Custo estimado</label>{{ form.estimated_cost }}{{ form.estimated_cost.errors }}</div><div class="col-md-6 mb-3"><label class="form-label">Custo realizado</label>{{ form.actual_cost }}{{ form.actual_cost.errors }}</div></div>
+<div class="mb-3"><label class="form-label">Descricao *</label>{{ form.description }}{{ form.description.errors }}</div>
+<div class="mb-3"><label class="form-label">Resolucao</label>{{ form.resolution }}{{ form.resolution.errors }}</div>
+<button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Salvar</button> <a href="{% url 'maintenance:work_orders' %}" class="btn btn-secondary">Cancelar</a>
+</form></div></div>
+{% endblock %}
