@@ -3,6 +3,30 @@ from django.db import models
 from django.contrib.auth.models import User
 
 
+class Company(models.Model):
+    name = models.CharField('Nome da empresa', max_length=150, unique=True)
+    slug = models.SlugField('Identificador', max_length=160, unique=True)
+    is_active = models.BooleanField('Ativa', default=True)
+    created_at = models.DateTimeField('Criado em', auto_now_add=True)
+    updated_at = models.DateTimeField('Atualizado em', auto_now=True)
+
+    class Meta:
+        verbose_name = 'Empresa'
+        verbose_name_plural = 'Empresas'
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+    @classmethod
+    def get_default_company(cls):
+        company, _ = cls.objects.get_or_create(
+            slug='empresa-principal',
+            defaults={'name': 'Empresa Principal'},
+        )
+        return company
+
+
 class UserProfile(models.Model):
     ROLE_CHOICES = [
         ('admin',    'Administrador'),
@@ -14,7 +38,15 @@ class UserProfile(models.Model):
 
     user = models.OneToOneField(
         User, on_delete=models.CASCADE,
-        related_name='profile', verbose_name='Usuário'
+        related_name='profile', verbose_name='Usuario'
+    )
+    company = models.ForeignKey(
+        Company,
+        on_delete=models.PROTECT,
+        related_name='users',
+        verbose_name='Empresa',
+        null=True,
+        blank=True,
     )
     role       = models.CharField('Papel',     max_length=20, choices=ROLE_CHOICES, default='viewer')
     phone      = models.CharField('Telefone',  max_length=20, blank=True)
@@ -22,13 +54,19 @@ class UserProfile(models.Model):
     updated_at = models.DateTimeField('Atualizado em',  auto_now=True)
 
     class Meta:
-        verbose_name        = 'Perfil de Usuário'
-        verbose_name_plural = 'Perfis de Usuários'
+        verbose_name        = 'Perfil de Usuario'
+        verbose_name_plural = 'Perfis de Usuarios'
+
+    def save(self, *args, **kwargs):
+        if not self.company_id:
+            self.company = Company.get_default_company()
+        super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.user.get_full_name() or self.user.username} ({self.get_role_display()})"
+        company = f' - {self.company.name}' if self.company_id else ''
+        return f"{self.user.get_full_name() or self.user.username} ({self.get_role_display()}){company}"
 
-    # ── Helpers de permissão ──────────────────────────────────────────────────
+    # -- Helpers de permissao ---------------------------------------------
     @property
     def is_admin(self):
         return self.role == 'admin' or self.user.is_superuser
@@ -64,10 +102,10 @@ class UserProfile(models.Model):
         return self.is_operator
 
 
-# ── Notificações ──────────────────────────────────────────────────────────────
+# -- Notificacoes ----------------------------------------------------------
 class Notificacao(models.Model):
     TIPOS = [
-        ('info',    'Informação'),
+        ('info',    'Informacao'),
         ('alerta',  'Alerta'),
         ('sucesso', 'Sucesso'),
         ('erro',    'Erro'),
@@ -80,9 +118,9 @@ class Notificacao(models.Model):
     criada_em = models.DateTimeField('Criada em', auto_now_add=True)
 
     class Meta:
-        verbose_name        = 'Notificação'
-        verbose_name_plural = 'Notificações'
+        verbose_name        = 'Notificacao'
+        verbose_name_plural = 'Notificacoes'
         ordering            = ['-criada_em']
 
     def __str__(self):
-        return f'{self.usuario.username} — {self.mensagem[:50]}'
+        return f'{self.usuario.username} - {self.mensagem[:50]}'
