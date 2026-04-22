@@ -5,6 +5,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.utils import timezone
 from apps.core.mixins import TripRegisterMixin, ManagerRequiredMixin
 from .models import Trip
+from .forms import TripForm
 
 
 class TripListView(LoginRequiredMixin, ListView):
@@ -22,7 +23,7 @@ class TripDetailView(LoginRequiredMixin, DetailView):
 
 class TripCreateView(TripRegisterMixin, CreateView):
     model = Trip
-    fields = ['vehicle', 'driver', 'start_time', 'start_odometer', 'destination', 'purpose', 'service_order']
+    form_class = TripForm
     template_name = 'trips/trip_form.html'
     success_url = reverse_lazy('trips:list')
 
@@ -34,7 +35,7 @@ class TripCreateView(TripRegisterMixin, CreateView):
 
 class TripUpdateView(TripRegisterMixin, UpdateView):
     model = Trip
-    fields = ['vehicle', 'driver', 'start_time', 'end_time', 'start_odometer', 'end_odometer', 'destination', 'purpose', 'service_order']
+    form_class = TripForm
     template_name = 'trips/trip_form.html'
     success_url = reverse_lazy('trips:list')
 
