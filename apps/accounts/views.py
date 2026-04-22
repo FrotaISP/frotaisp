@@ -36,11 +36,21 @@ class RegisterView(CreateView):
     template_name = 'accounts/register.html'
     success_url   = reverse_lazy('dashboard:index')
 
+    def get_form(self, form_class=None):
+        form = super().get_form(form_class)
+        form.fields.pop('role', None)
+        return form
+
     def form_valid(self, form):
-        user = form.save()
-        profile, _ = UserProfile.objects.get_or_create(user=user)
-        profile.role = 'viewer'
-        profile.save()
+        user = form.save(commit=False)
+        user.save()
+        profile, _ = UserProfile.objects.update_or_create(
+            user=user,
+            defaults={
+                'role': 'viewer',
+                'phone': form.cleaned_data.get('phone', ''),
+            },
+        )
         login(self.request, user)
         messages.success(self.request, f'Bem-vindo, {user.first_name or user.username}!')
         return redirect(self.success_url)
