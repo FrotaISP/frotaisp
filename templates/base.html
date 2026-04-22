@@ -5,71 +5,132 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}FleetISP{% endblock %}</title>
-    <!-- Bootstrap 5 + Ícones -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Leaflet CSS (para páginas que usam mapa) -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <!-- Estilos customizados globais -->
     <link rel="stylesheet" href="{% static 'css/custom.css' %}">
     {% block extra_css %}{% endblock %}
 </head>
 <body>
     <div class="container-fluid">
         <div class="row">
+
             <!-- Sidebar -->
             {% include 'includes/sidebar.html' %}
 
             <!-- Main content -->
             <div class="col-md-9 col-lg-10 ms-sm-auto px-md-0">
-                <!-- Topbar (com sino e dropdown) -->
+
+                <!-- Topbar -->
                 <div class="navbar-top d-flex justify-content-between align-items-center">
                     <div>
                         <h5 class="mb-0 fw-semibold">
                             {% block page_title %}FleetISP{% endblock %}
                         </h5>
                     </div>
+
                     <div class="d-flex align-items-center gap-3">
-                        <!-- Sino de notificações (link para página de alertas - a implementar) -->
-                        <a href="#" class="position-relative text-secondary text-decoration-none">
-                            <i class="bi bi-bell fs-5"></i>
-                            <!-- Badge de contagem será implementada futuramente -->
-                        </a>
+
+                        <!-- ── Sino de notificações ──────────────────────────── -->
+                        <div class="dropdown">
+                            <a href="{% url 'accounts:notificacoes' %}"
+                               class="position-relative text-secondary text-decoration-none"
+                               data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-bell fs-5"></i>
+                                {% if notificacoes_nao_lidas %}
+                                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+                                          id="notif-badge">
+                                        {{ notificacoes_nao_lidas }}
+                                    </span>
+                                {% endif %}
+                            </a>
+                            <div class="dropdown-menu dropdown-menu-end shadow p-0" style="min-width:320px; max-height:400px; overflow-y:auto;">
+                                <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom">
+                                    <span class="fw-semibold">Notificações</span>
+                                    {% if notificacoes_nao_lidas %}
+                                        <span class="badge bg-danger rounded-pill">{{ notificacoes_nao_lidas }}</span>
+                                    {% endif %}
+                                </div>
+                                <div class="px-3 py-3 text-center text-muted small">
+                                    <a href="{% url 'accounts:notificacoes' %}" class="text-decoration-none text-primary">
+                                        Ver todas as notificações →
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- ── fim sino ─────────────────────────────────────── -->
 
                         <div class="vr"></div>
 
-                        <!-- Dropdown do usuário -->
+                        <!-- ── Dropdown do usuário ──────────────────────────── -->
                         <div class="dropdown">
-                            <a href="#" class="d-flex align-items-center text-decoration-none dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" style="color: inherit;">
-                                <img src="https://ui-avatars.com/api/?name={{ request.user.get_full_name|default:request.user.username }}&background=0d6efd&color=fff&size=40&bold=true" class="avatar-sm me-2" alt="avatar">
+                            <a href="#" class="d-flex align-items-center text-decoration-none dropdown-toggle"
+                               data-bs-toggle="dropdown" aria-expanded="false" style="color: inherit;">
+                                <img src="https://ui-avatars.com/api/?name={{ request.user.get_full_name|default:request.user.username }}&background=0d6efd&color=fff&size=40&bold=true"
+                                     class="avatar-sm me-2" alt="avatar">
                                 <span class="d-none d-md-block">{{ request.user.get_full_name|default:request.user.username }}</span>
                             </a>
-                            <ul class="dropdown-menu dropdown-menu-end">
-                                <li><a class="dropdown-item" href="#"><i class="bi bi-person me-2"></i>Meu Perfil</a></li>
-                                <li><a class="dropdown-item" href="#"><i class="bi bi-gear me-2"></i>Configurações</a></li>
-                                <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="{% url 'accounts:logout' %}"><i class="bi bi-box-arrow-right me-2"></i>Sair</a></li>
+                            <ul class="dropdown-menu dropdown-menu-end shadow">
+                                <li>
+                                    <div class="dropdown-item-text px-3 py-2">
+                                        <p class="mb-0 fw-semibold">{{ request.user.get_full_name|default:request.user.username }}</p>
+                                        <small class="text-muted">{{ user_profile.get_role_display }}</small>
+                                    </div>
+                                </li>
+                                <li><hr class="dropdown-divider my-1"></li>
+                                <li>
+                                    <a class="dropdown-item" href="{% url 'accounts:my_profile' %}">
+                                        <i class="bi bi-person me-2"></i>Meu Perfil
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" href="{% url 'accounts:settings' %}">
+                                        <i class="bi bi-gear me-2"></i>Configurações
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" href="{% url 'accounts:notificacoes' %}">
+                                        <i class="bi bi-bell me-2"></i>Notificações
+                                        {% if notificacoes_nao_lidas %}
+                                            <span class="badge bg-danger rounded-pill ms-1">{{ notificacoes_nao_lidas }}</span>
+                                        {% endif %}
+                                    </a>
+                                </li>
+                                {% if user_profile.is_admin %}
+                                <li><hr class="dropdown-divider my-1"></li>
+                                <li>
+                                    <a class="dropdown-item" href="{% url 'accounts:user_list' %}">
+                                        <i class="bi bi-people me-2"></i>Gerenciar Usuários
+                                    </a>
+                                </li>
+                                {% endif %}
+                                <li><hr class="dropdown-divider my-1"></li>
+                                <li>
+                                    <a class="dropdown-item text-danger" href="{% url 'accounts:logout' %}">
+                                        <i class="bi bi-box-arrow-right me-2"></i>Sair
+                                    </a>
+                                </li>
                             </ul>
                         </div>
+                        <!-- ── fim dropdown usuário ─────────────────────────── -->
+
                     </div>
                 </div>
+                <!-- fim topbar -->
 
                 <!-- Conteúdo específico da página -->
                 <div class="main-content">
                     {% block content %}{% endblock %}
                 </div>
 
-                <!-- Rodapé -->
                 {% include 'includes/footer.html' %}
             </div>
         </div>
     </div>
 
-    <!-- Scripts globais -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- Leaflet JS (carregado sob demanda nas páginas que precisam) -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     {% block extra_js %}{% endblock %}
 </body>
 </html>

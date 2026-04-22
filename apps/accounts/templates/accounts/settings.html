@@ -2,135 +2,124 @@
 {% block title %}Configurações{% endblock %}
 
 {% block content %}
-<div class="container py-4" style="max-width: 640px;">
+<div class="container-fluid px-4 py-4">
 
-  <div class="mb-4">
-    <h1 class="h3 fw-bold"><i class="bi bi-gear-fill text-primary me-2"></i>Configurações</h1>
-    <p class="text-muted">Preferências da sua conta.</p>
+  <div class="d-flex align-items-center mb-4">
+    <i class="bi bi-gear-fill text-primary fs-4 me-3"></i>
+    <div>
+      <h4 class="mb-0 fw-semibold">Configurações</h4>
+      <small class="text-muted">Gerencie suas preferências pessoais</small>
+    </div>
   </div>
 
   {% if messages %}
     {% for msg in messages %}
-      <div class="alert alert-{{ msg.tags }} alert-dismissible fade show">
-        {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      <div class="alert alert-{{ msg.tags|default:'info' }} alert-dismissible fade show" role="alert">
+        {{ msg }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
       </div>
     {% endfor %}
   {% endif %}
 
-  <!-- Info da conta -->
-  <div class="card shadow-sm mb-4">
-    <div class="card-header bg-white fw-semibold border-bottom">
-      <i class="bi bi-person-badge me-2 text-primary"></i>Informações da Conta
-    </div>
-    <div class="card-body">
-      <div class="row g-3">
-        <div class="col-sm-6">
-          <label class="form-label text-muted small fw-semibold text-uppercase">Usuário</label>
-          <p class="fw-semibold mb-0">{{ request.user.username }}</p>
+  <div class="row g-4">
+
+    <!-- Configurações de contato -->
+    <div class="col-12 col-lg-6">
+      <div class="card shadow-sm border-0">
+        <div class="card-header bg-white border-bottom py-3">
+          <h6 class="mb-0 fw-semibold">
+            <i class="bi bi-telephone-fill text-primary me-2"></i>Contato
+          </h6>
         </div>
-        <div class="col-sm-6">
-          <label class="form-label text-muted small fw-semibold text-uppercase">Nível de Acesso</label>
-          <p class="mb-0">
-            {% if user_profile.role == 'admin' %}
-              <span class="badge bg-danger fs-6">Administrador</span>
-            {% elif user_profile.role == 'manager' %}
-              <span class="badge bg-warning text-dark fs-6">Gestor</span>
-            {% elif user_profile.role == 'operator' %}
-              <span class="badge bg-info text-dark fs-6">Operador</span>
-            {% elif user_profile.role == 'driver' %}
-              <span class="badge bg-success fs-6">Motorista</span>
-            {% else %}
-              <span class="badge bg-secondary fs-6">Visualizador</span>
-            {% endif %}
+        <div class="card-body p-4">
+          <form method="post" novalidate>
+            {% csrf_token %}
+            {% for field in form %}
+              <div class="mb-3">
+                <label class="form-label fw-medium">{{ field.label }}</label>
+                {{ field }}
+                {% if field.errors %}
+                  <div class="invalid-feedback d-block">{{ field.errors|join:", " }}</div>
+                {% endif %}
+                {% if field.help_text %}
+                  <div class="form-text text-muted">{{ field.help_text }}</div>
+                {% endif %}
+              </div>
+            {% endfor %}
+            <button type="submit" class="btn btn-primary px-4">
+              <i class="bi bi-check-lg me-1"></i> Salvar configurações
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Informações de permissão (somente leitura) -->
+    <div class="col-12 col-lg-6">
+      <div class="card shadow-sm border-0">
+        <div class="card-header bg-white border-bottom py-3">
+          <h6 class="mb-0 fw-semibold">
+            <i class="bi bi-person-badge-fill text-secondary me-2"></i>Perfil de Acesso
+          </h6>
+        </div>
+        <div class="card-body p-4">
+          <p class="text-muted small mb-3">
+            Suas permissões são definidas pelo administrador do sistema e não podem ser alteradas aqui.
           </p>
+          <dl class="row mb-0">
+            <dt class="col-5 text-muted small">Papel</dt>
+            <dd class="col-7">
+              <span class="badge
+                {% if user_profile.role == 'admin' %}bg-danger
+                {% elif user_profile.role == 'manager' %}bg-warning text-dark
+                {% elif user_profile.role == 'operator' %}bg-primary
+                {% elif user_profile.role == 'driver' %}bg-success
+                {% else %}bg-secondary{% endif %}">
+                {{ user_profile.get_role_display }}
+              </span>
+            </dd>
+            <dt class="col-5 text-muted small mt-2">Editar registros</dt>
+            <dd class="col-7 mt-2">
+              {% if user_profile.can_edit %}<i class="bi bi-check-circle-fill text-success"></i>{% else %}<i class="bi bi-x-circle-fill text-danger"></i>{% endif %}
+            </dd>
+            <dt class="col-5 text-muted small mt-2">Excluir registros</dt>
+            <dd class="col-7 mt-2">
+              {% if user_profile.can_delete %}<i class="bi bi-check-circle-fill text-success"></i>{% else %}<i class="bi bi-x-circle-fill text-danger"></i>{% endif %}
+            </dd>
+            <dt class="col-5 text-muted small mt-2">Gerenciar usuários</dt>
+            <dd class="col-7 mt-2">
+              {% if user_profile.can_manage_users %}<i class="bi bi-check-circle-fill text-success"></i>{% else %}<i class="bi bi-x-circle-fill text-danger"></i>{% endif %}
+            </dd>
+          </dl>
         </div>
-        <div class="col-sm-6">
-          <label class="form-label text-muted small fw-semibold text-uppercase">Nome Completo</label>
-          <p class="mb-0">{{ request.user.get_full_name|default:"—" }}</p>
+      </div>
+
+      <!-- Links rápidos -->
+      <div class="card shadow-sm border-0 mt-4">
+        <div class="card-header bg-white border-bottom py-3">
+          <h6 class="mb-0 fw-semibold">
+            <i class="bi bi-lightning-fill text-warning me-2"></i>Ações rápidas
+          </h6>
         </div>
-        <div class="col-sm-6">
-          <label class="form-label text-muted small fw-semibold text-uppercase">E-mail</label>
-          <p class="mb-0">{{ request.user.email|default:"—" }}</p>
-        </div>
-        <div class="col-sm-6">
-          <label class="form-label text-muted small fw-semibold text-uppercase">Membro desde</label>
-          <p class="mb-0">{{ request.user.date_joined|date:"d/m/Y" }}</p>
-        </div>
-        <div class="col-sm-6">
-          <label class="form-label text-muted small fw-semibold text-uppercase">Último acesso</label>
-          <p class="mb-0">{{ request.user.last_login|date:"d/m/Y H:i"|default:"—" }}</p>
+        <div class="list-group list-group-flush">
+          <a href="{% url 'accounts:my_profile' %}" class="list-group-item list-group-item-action d-flex align-items-center gap-2 py-3">
+            <i class="bi bi-person-fill text-primary"></i>
+            <span>Editar dados pessoais</span>
+            <i class="bi bi-chevron-right ms-auto text-muted small"></i>
+          </a>
+          <a href="{% url 'accounts:notificacoes' %}" class="list-group-item list-group-item-action d-flex align-items-center gap-2 py-3">
+            <i class="bi bi-bell-fill text-warning"></i>
+            <span>Ver notificações</span>
+            {% if notificacoes_nao_lidas %}
+              <span class="badge bg-danger rounded-pill ms-auto">{{ notificacoes_nao_lidas }}</span>
+            {% else %}
+              <i class="bi bi-chevron-right ms-auto text-muted small"></i>
+            {% endif %}
+          </a>
         </div>
       </div>
     </div>
-  </div>
 
-  <!-- Preferências -->
-  <div class="card shadow-sm mb-4">
-    <div class="card-header bg-white fw-semibold border-bottom">
-      <i class="bi bi-sliders me-2 text-primary"></i>Preferências
-    </div>
-    <div class="card-body p-4">
-      <form method="post" novalidate>
-        {% csrf_token %}
-        <div class="mb-3">
-          <label class="form-label fw-semibold">Telefone de Contato</label>
-          {{ form.phone }}
-          <div class="form-text">Usado para notificações internas.</div>
-        </div>
-        <button type="submit" class="btn btn-primary px-4">
-          <i class="bi bi-check-lg me-1"></i>Salvar Preferências
-        </button>
-        <a href="{% url 'accounts:my_profile' %}" class="btn btn-outline-secondary ms-2">
-          <i class="bi bi-person me-1"></i>Editar Perfil Completo
-        </a>
-      </form>
-    </div>
   </div>
-
-  <!-- Permissões do papel -->
-  <div class="card shadow-sm border-0 bg-light">
-    <div class="card-body">
-      <h6 class="fw-bold mb-3"><i class="bi bi-shield-check me-1 text-success"></i>Suas Permissões</h6>
-      <div class="row g-2 small">
-        <div class="col-6">
-          <span class="{% if user_profile.can_register_fuel %}text-success{% else %}text-danger{% endif %}">
-            <i class="bi {% if user_profile.can_register_fuel %}bi-check-circle-fill{% else %}bi-x-circle-fill{% endif %} me-1"></i>
-            Registrar abastecimento
-          </span>
-        </div>
-        <div class="col-6">
-          <span class="{% if user_profile.can_register_trip %}text-success{% else %}text-danger{% endif %}">
-            <i class="bi {% if user_profile.can_register_trip %}bi-check-circle-fill{% else %}bi-x-circle-fill{% endif %} me-1"></i>
-            Registrar viagem
-          </span>
-        </div>
-        <div class="col-6">
-          <span class="{% if user_profile.can_edit %}text-success{% else %}text-danger{% endif %}">
-            <i class="bi {% if user_profile.can_edit %}bi-check-circle-fill{% else %}bi-x-circle-fill{% endif %} me-1"></i>
-            Criar / editar cadastros
-          </span>
-        </div>
-        <div class="col-6">
-          <span class="{% if user_profile.can_register_maintenance %}text-success{% else %}text-danger{% endif %}">
-            <i class="bi {% if user_profile.can_register_maintenance %}bi-check-circle-fill{% else %}bi-x-circle-fill{% endif %} me-1"></i>
-            Registrar manutenção
-          </span>
-        </div>
-        <div class="col-6">
-          <span class="{% if user_profile.can_delete %}text-success{% else %}text-danger{% endif %}">
-            <i class="bi {% if user_profile.can_delete %}bi-check-circle-fill{% else %}bi-x-circle-fill{% endif %} me-1"></i>
-            Excluir registros
-          </span>
-        </div>
-        <div class="col-6">
-          <span class="{% if user_profile.can_manage_users %}text-success{% else %}text-danger{% endif %}">
-            <i class="bi {% if user_profile.can_manage_users %}bi-check-circle-fill{% else %}bi-x-circle-fill{% endif %} me-1"></i>
-            Gerenciar usuários
-          </span>
-        </div>
-      </div>
-    </div>
-  </div>
-
 </div>
 {% endblock %}

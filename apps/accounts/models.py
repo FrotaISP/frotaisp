@@ -16,18 +16,19 @@ class UserProfile(models.Model):
         User, on_delete=models.CASCADE,
         related_name='profile', verbose_name='Usuário'
     )
-    role = models.CharField('Papel', max_length=20, choices=ROLE_CHOICES, default='viewer')
-    phone = models.CharField('Telefone', max_length=20, blank=True)
-    created_at = models.DateTimeField('Criado em', auto_now_add=True)
-    updated_at = models.DateTimeField('Atualizado em', auto_now=True)
+    role       = models.CharField('Papel',     max_length=20, choices=ROLE_CHOICES, default='viewer')
+    phone      = models.CharField('Telefone',  max_length=20, blank=True)
+    created_at = models.DateTimeField('Criado em',      auto_now_add=True)
+    updated_at = models.DateTimeField('Atualizado em',  auto_now=True)
 
     class Meta:
-        verbose_name = 'Perfil de Usuário'
+        verbose_name        = 'Perfil de Usuário'
         verbose_name_plural = 'Perfis de Usuários'
 
     def __str__(self):
         return f"{self.user.get_full_name() or self.user.username} ({self.get_role_display()})"
 
+    # ── Helpers de permissão ──────────────────────────────────────────────────
     @property
     def is_admin(self):
         return self.role == 'admin' or self.user.is_superuser
@@ -61,3 +62,27 @@ class UserProfile(models.Model):
 
     def can_register_maintenance(self):
         return self.is_operator
+
+
+# ── Notificações ──────────────────────────────────────────────────────────────
+class Notificacao(models.Model):
+    TIPOS = [
+        ('info',    'Informação'),
+        ('alerta',  'Alerta'),
+        ('sucesso', 'Sucesso'),
+        ('erro',    'Erro'),
+    ]
+
+    usuario   = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notificacoes')
+    mensagem  = models.TextField('Mensagem')
+    tipo      = models.CharField('Tipo', max_length=10, choices=TIPOS, default='info')
+    lida      = models.BooleanField('Lida', default=False)
+    criada_em = models.DateTimeField('Criada em', auto_now_add=True)
+
+    class Meta:
+        verbose_name        = 'Notificação'
+        verbose_name_plural = 'Notificações'
+        ordering            = ['-criada_em']
+
+    def __str__(self):
+        return f'{self.usuario.username} — {self.mensagem[:50]}'

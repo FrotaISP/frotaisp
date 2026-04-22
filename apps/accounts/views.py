@@ -8,30 +8,33 @@ from django.contrib.auth.models import User
 from django.contrib.auth import login, update_session_auth_hash
 from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib import messages
+from django.http import JsonResponse
 
 from apps.core.mixins import AdminRequiredMixin
 from .forms import (
     CustomAuthenticationForm, CustomUserCreationForm,
     UserEditForm, AdminPasswordResetForm, ProfileForm, UserSettingsForm,
 )
-from .models import UserProfile
+from .models import UserProfile, Notificacao
 
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
 class CustomLoginView(LoginView):
-    template_name = 'accounts/login.html'
-    authentication_form = CustomAuthenticationForm
+    template_name            = 'accounts/login.html'
+    authentication_form      = CustomAuthenticationForm
     redirect_authenticated_user = True
-    next_page = reverse_lazy('dashboard:index')
+    next_page                = reverse_lazy('dashboard:index')
+
 
 class CustomLogoutView(LogoutView):
     next_page = reverse_lazy('accounts:login')
 
+
 class RegisterView(CreateView):
-    model = User
-    form_class = CustomUserCreationForm
+    model         = User
+    form_class    = CustomUserCreationForm
     template_name = 'accounts/register.html'
-    success_url = reverse_lazy('dashboard:index')
+    success_url   = reverse_lazy('dashboard:index')
 
     def form_valid(self, form):
         user = form.save()
@@ -55,6 +58,7 @@ class MyProfileView(LoginRequiredMixin, View):
 
     def post(self, request):
         action = request.POST.get('action')
+
         if action == 'update_profile':
             profile_form = ProfileForm(request.POST, request.FILES, instance=request.user, user=request.user)
             password_form = PasswordChangeForm(user=request.user)
@@ -62,16 +66,19 @@ class MyProfileView(LoginRequiredMixin, View):
                 profile_form.save()
                 messages.success(request, 'Perfil atualizado com sucesso!')
                 return redirect('accounts:my_profile')
+
         elif action == 'change_password':
-            profile_form = ProfileForm(instance=request.user, user=request.user)
+            profile_form  = ProfileForm(instance=request.user, user=request.user)
             password_form = PasswordChangeForm(user=request.user, data=request.POST)
             if password_form.is_valid():
                 update_session_auth_hash(request, password_form.save())
                 messages.success(request, 'Senha alterada com sucesso!')
                 return redirect('accounts:my_profile')
+
         else:
-            profile_form = ProfileForm(instance=request.user, user=request.user)
+            profile_form  = ProfileForm(instance=request.user, user=request.user)
             password_form = PasswordChangeForm(user=request.user)
+
         return render(request, self.template_name, {
             'profile_form': profile_form,
             'password_form': password_form,
@@ -89,13 +96,13 @@ class SystemSettingsView(LoginRequiredMixin, View):
     def get(self, request):
         profile = self._get_profile(request)
         return render(request, self.template_name, {
-            'form': UserSettingsForm(instance=profile),
+            'form':         UserSettingsForm(instance=profile),
             'user_profile': profile,
         })
 
     def post(self, request):
         profile = self._get_profile(request)
-        form = UserSettingsForm(request.POST, instance=profile)
+        form    = UserSettingsForm(request.POST, instance=profile)
         if form.is_valid():
             form.save()
             messages.success(request, 'Configurações salvas.')
@@ -103,70 +110,119 @@ class SystemSettingsView(LoginRequiredMixin, View):
         return render(request, self.template_name, {'form': form, 'user_profile': profile})
 
 
+# ── Notificações ──────────────────────────────────────────────────────────────
+class NotificacoesView(LoginRequiredMixin, View):
+    template_name = 'accounts/notificacoes.html'
+
+    def get(self, request):
+        notifs = Notificacao.objects.filter(usuario=request.user)
+        return render(request, self.template_name, {'notificacoes': notifs})
+
+
+class MarcarNotificacaoLidaView(LoginRequiredMixin, View):
+    def post(self, request, pk):
+        notif = get_object_or_404(Notificacao, pk=pk, usuario=request.user)
+        notif.lida = True
+        notif.save()
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({'status': 'ok'})
+        return redirect('accounts:notificacoes')
+
+
+class MarcarTodasLidasView(LoginRequiredMixin, View):
+    def post(self, request):
+        Notificacao.objects.filter(usuario=request.user, lida=False).update(lida=True)
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({'status': 'ok'})
+        return redirect('accounts:notificacoes')
+
+
 # ── Gestão de usuários (Admin) ────────────────────────────────────────────────
 class UserListView(AdminRequiredMixin, ListView):
-    model = User
-    template_name = 'accounts/user_list.html'
+    model              = User
+    template_name      = 'accounts/user_list.html'
     context_object_name = 'users'
-    paginate_by = 20
+    paginate_by        = 20
+
     def get_queryset(self):
         return User.objects.select_related('profile').order_by('username')
 
+
 class UserCreateView(AdminRequiredMixin, CreateView):
-    model = User
-    form_class = CustomUserCreationForm
+    model         = User
+    form_class    = CustomUserCreationForm
     template_name = 'accounts/user_form.html'
-    success_url = reverse_lazy('accounts:user_list')
+    success_url   = reverse_lazy('accounts:user_list')
+
     def form_valid(self, form):
         r = super().form_valid(form)
         messages.success(self.request, f'Usuário "{self.object.username}" criado.')
         return r
+
     def get_context_data(self, **kwargs):
         return {**super().get_context_data(**kwargs), 'title': 'Novo Usuário'}
 
+
 class UserEditView(AdminRequiredMixin, View):
     template_name = 'accounts/user_form.html'
+
     def get(self, request, pk):
         u = get_object_or_404(User, pk=pk)
-        return render(request, self.template_name, {'form': UserEditForm(instance=u), 'title': f'Editar — {u.username}', 'editing': True})
+        return render(request, self.template_name, {
+            'form': UserEditForm(instance=u), 'title': f'Editar — {u.username}', 'editing': True
+        })
+
     def post(self, request, pk):
-        u = get_object_or_404(User, pk=pk)
+        u    = get_object_or_404(User, pk=pk)
         form = UserEditForm(request.POST, instance=u)
         if form.is_valid():
             form.save()
             messages.success(request, f'Usuário "{u.username}" atualizado.')
             return redirect('accounts:user_list')
-        return render(request, self.template_name, {'form': form, 'title': f'Editar — {u.username}', 'editing': True})
+        return render(request, self.template_name, {
+            'form': form, 'title': f'Editar — {u.username}', 'editing': True
+        })
+
 
 class UserDeleteView(AdminRequiredMixin, View):
     template_name = 'accounts/user_confirm_delete.html'
+
     def get(self, request, pk):
         u = get_object_or_404(User, pk=pk)
         if u == request.user:
             messages.error(request, 'Não pode excluir sua própria conta.')
             return redirect('accounts:user_list')
         return render(request, self.template_name, {'target_user': u})
+
     def post(self, request, pk):
         u = get_object_or_404(User, pk=pk)
         if u == request.user:
             messages.error(request, 'Não pode excluir sua própria conta.')
             return redirect('accounts:user_list')
-        name = u.username; u.delete()
+        name = u.username
+        u.delete()
         messages.success(request, f'Usuário "{name}" excluído.')
         return redirect('accounts:user_list')
 
+
 class UserPasswordResetView(AdminRequiredMixin, View):
     template_name = 'accounts/user_password_reset.html'
+
     def get(self, request, pk):
-        return render(request, self.template_name, {'form': AdminPasswordResetForm(), 'target_user': get_object_or_404(User, pk=pk)})
+        return render(request, self.template_name, {
+            'form': AdminPasswordResetForm(), 'target_user': get_object_or_404(User, pk=pk)
+        })
+
     def post(self, request, pk):
         target = get_object_or_404(User, pk=pk)
-        form = AdminPasswordResetForm(request.POST)
+        form   = AdminPasswordResetForm(request.POST)
         if form.is_valid():
-            target.set_password(form.cleaned_data['new_password']); target.save()
+            target.set_password(form.cleaned_data['new_password'])
+            target.save()
             messages.success(request, f'Senha de "{target.username}" redefinida.')
             return redirect('accounts:user_list')
         return render(request, self.template_name, {'form': form, 'target_user': target})
+
 
 class UserToggleActiveView(AdminRequiredMixin, View):
     def post(self, request, pk):
@@ -174,6 +230,8 @@ class UserToggleActiveView(AdminRequiredMixin, View):
         if u == request.user:
             messages.error(request, 'Não pode desativar sua própria conta.')
         else:
-            u.is_active = not u.is_active; u.save()
-            messages.success(request, f'Usuário "{u.username}" {"ativado" if u.is_active else "desativado"}.')
+            u.is_active = not u.is_active
+            u.save()
+            estado = 'ativado' if u.is_active else 'desativado'
+            messages.success(request, f'Usuário "{u.username}" {estado}.')
         return redirect('accounts:user_list')
