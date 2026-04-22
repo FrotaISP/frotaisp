@@ -13,7 +13,7 @@ from django.utils.text import slugify
 
 from apps.core.mixins import AdminRequiredMixin, get_user_company
 from .forms import (
-    CustomAuthenticationForm, CustomUserCreationForm,
+    CompanyBillingForm, CustomAuthenticationForm, CustomUserCreationForm,
     UserEditForm, AdminPasswordResetForm, ProfileForm, UserSettingsForm,
 )
 from .models import Company, UserProfile, Notificacao
@@ -50,7 +50,15 @@ class RegisterView(CreateView):
         while Company.objects.filter(slug=slug).exists():
             suffix += 1
             slug = f'{base_slug}-{suffix}'
-        return Company.objects.create(name=name, slug=slug)
+        return Company.objects.create(
+            name=name,
+            slug=slug,
+            billing_email=user.email,
+            subscription_status='trial',
+            plan='starter',
+            max_users=3,
+            max_vehicles=10,
+        )
 
     def form_valid(self, form):
         user = form.save(commit=False)
@@ -65,7 +73,7 @@ class RegisterView(CreateView):
             },
         )
         login(self.request, user)
-        messages.success(self.request, f'Bem-vindo, {user.first_name or user.username}!')
+        messages.success(self.request, f'Bem-vindo, {user.first_name or user.username}! Seu teste gratis foi ativado.')
         return redirect(self.success_url)
 
 
@@ -131,6 +139,49 @@ class SystemSettingsView(LoginRequiredMixin, View):
         return render(request, self.template_name, {'form': form, 'user_profile': profile})
 
 
+class SubscriptionView(LoginRequiredMixin, View):
+    template_name = 'accounts/subscription.html'
+
+    def get_company(self):
+        return get_user_company(self.request.user)
+
+    def dispatch(self, request, *args, **kwargs):
+        company = self.get_company()
+        profile = getattr(request.user, 'profile', None)
+        if not request.user.is_superuser and profile and not profile.can_manage_users():
+            messages.error(request, 'Apenas administradores podem alterar dados da assinatura.')
+            return redirect('dashboard:index')
+        if not company:
+            messages.error(request, 'Empresa nao encontrada para este usuario.')
+            return redirect('dashboard:index')
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_context(self, form=None):
+        company = self.get_company()
+        users_count = company.users_count()
+        vehicles_count = company.vehicles_count()
+        return {
+            'company': company,
+            'form': form or CompanyBillingForm(instance=company),
+            'users_count': users_count,
+            'vehicles_count': vehicles_count,
+            'users_percent': company.usage_percent(users_count, company.max_users),
+            'vehicles_percent': company.usage_percent(vehicles_count, company.max_vehicles),
+        }
+
+    def get(self, request):
+        return render(request, self.template_name, self.get_context())
+
+    def post(self, request):
+        company = self.get_company()
+        form = CompanyBillingForm(request.POST, instance=company)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Dados da empresa atualizados.')
+            return redirect('accounts:subscription')
+        return render(request, self.template_name, self.get_context(form=form))
+
+
 class NotificacoesView(LoginRequiredMixin, View):
     template_name = 'accounts/notificacoes.html'
 
@@ -175,6 +226,13 @@ class UserCreateView(AdminRequiredMixin, CreateView):
     form_class = CustomUserCreationForm
     template_name = 'accounts/user_form.html'
     success_url = reverse_lazy('accounts:user_list')
+
+    def dispatch(self, request, *args, **kwargs):
+        company = get_user_company(request.user)
+        if company and not company.can_add_user():
+            messages.error(request, 'Limite de usuarios do plano atingido. Atualize o plano para adicionar novos usuarios.')
+            return redirect('accounts:subscription')
+        return super().dispatch(request, *args, **kwargs)
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
