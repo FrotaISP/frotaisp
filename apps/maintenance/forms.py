@@ -3,7 +3,8 @@ from django import forms
 from django.utils import timezone
 from apps.core.mixins import scope_related_queryset_for_user
 from apps.core.uploads import ALLOWED_DOCUMENT_TYPES, validate_uploaded_file
-from .models import Maintenance, PreventiveMaintenancePlan
+from .models import Maintenance, PreventiveMaintenancePlan, VehicleExpense, WorkOrder
+from apps.drivers.models import Driver
 from apps.fuel.models import FuelRecord
 from apps.vehicles.models import Vehicle
 
@@ -175,3 +176,121 @@ class PreventiveMaintenancePlanForm(forms.ModelForm):
             plan.save()
             self.save_m2m()
         return plan
+
+
+class WorkOrderForm(forms.ModelForm):
+    class Meta:
+        model = WorkOrder
+        fields = [
+            'vehicle', 'driver', 'title', 'category', 'priority', 'status',
+            'scheduled_date', 'odometer', 'description', 'resolution',
+            'estimated_cost', 'actual_cost', 'attachment'
+        ]
+        widgets = {
+            'vehicle': forms.Select(attrs={'class': 'form-select'}),
+            'driver': forms.Select(attrs={'class': 'form-select'}),
+            'title': forms.TextInput(attrs={'class': 'form-control'}),
+            'category': forms.Select(attrs={'class': 'form-select'}),
+            'priority': forms.Select(attrs={'class': 'form-select'}),
+            'status': forms.Select(attrs={'class': 'form-select'}),
+            'scheduled_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'odometer': forms.NumberInput(attrs={'class': 'form-control', 'min': '0'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'resolution': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'estimated_cost': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'min': '0'}),
+            'actual_cost': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'min': '0'}),
+            'attachment': forms.ClearableFileInput(attrs={'class': 'form-control'}),
+        }
+
+    def __init__(self, *args, company=None, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.company = company or getattr(self.instance, 'company', None)
+        if user:
+            self.fields['vehicle'].queryset = scope_related_queryset_for_user(Vehicle.objects.filter(is_active=True), user)
+            self.fields['driver'].queryset = scope_related_queryset_for_user(Driver.objects.select_related('user'), user)
+
+    def clean_vehicle(self):
+        vehicle = self.cleaned_data.get('vehicle')
+        if vehicle and self.company and vehicle.company_id != self.company.id:
+            raise forms.ValidationError('Selecione um veiculo da sua empresa.')
+        return vehicle
+
+    def clean_driver(self):
+        driver = self.cleaned_data.get('driver')
+        if driver and self.company and driver.company_id != self.company.id:
+            raise forms.ValidationError('Selecione um motorista da sua empresa.')
+        return driver
+
+    def clean_attachment(self):
+        attachment = self.cleaned_data.get('attachment')
+        try:
+            validate_uploaded_file(attachment, allowed_types=ALLOWED_DOCUMENT_TYPES, label='O anexo da ordem de servico')
+        except ValueError as exc:
+            raise forms.ValidationError(str(exc)) from exc
+        return attachment
+
+    def save(self, commit=True):
+        order = super().save(commit=False)
+        if self.company and not order.company_id:
+            order.company = self.company
+        if commit:
+            order.save()
+            self.save_m2m()
+        return order
+
+
+class VehicleExpenseForm(forms.ModelForm):
+    class Meta:
+        model = VehicleExpense
+        fields = ['vehicle', 'work_order', 'date', 'category', 'cost_center', 'supplier', 'description', 'amount', 'receipt', 'notes']
+        widgets = {
+            'vehicle': forms.Select(attrs={'class': 'form-select'}),
+            'work_order': forms.Select(attrs={'class': 'form-select'}),
+            'date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'category': forms.Select(attrs={'class': 'form-select'}),
+            'cost_center': forms.TextInput(attrs={'class': 'form-control'}),
+            'supplier': forms.TextInput(attrs={'class': 'form-control'}),
+            'description': forms.TextInput(attrs={'class': 'form-control'}),
+            'amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'min': '0'}),
+            'receipt': forms.ClearableFileInput(attrs={'class': 'form-control'}),
+            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        }
+
+    def __init__(self, *args, company=None, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.company = company or getattr(self.instance, 'company', None)
+        if user:
+            self.fields['vehicle'].queryset = scope_related_queryset_for_user(Vehicle.objects.filter(is_active=True), user)
+            self.fields['work_order'].queryset = scope_related_queryset_for_user(WorkOrder.objects.exclude(status__in=['completed', 'cancelled']), user)
+
+    def clean(self):
+        cleaned = super().clean()
+        vehicle = cleaned.get('vehicle')
+        work_order = cleaned.get('work_order')
+        amount = cleaned.get('amount')
+        if not vehicle and not work_order:
+            raise forms.ValidationError('Informe um veiculo ou uma ordem de servico para vincular a despesa.')
+        if vehicle and self.company and vehicle.company_id != self.company.id:
+            self.add_error('vehicle', 'Selecione um veiculo da sua empresa.')
+        if work_order and self.company and work_order.company_id != self.company.id:
+            self.add_error('work_order', 'Selecione uma ordem de servico da sua empresa.')
+        if amount is not None and amount <= 0:
+            self.add_error('amount', 'O valor deve ser maior que zero.')
+        return cleaned
+
+    def clean_receipt(self):
+        receipt = self.cleaned_data.get('receipt')
+        try:
+            validate_uploaded_file(receipt, allowed_types=ALLOWED_DOCUMENT_TYPES, label='O comprovante da despesa')
+        except ValueError as exc:
+            raise forms.ValidationError(str(exc)) from exc
+        return receipt
+
+    def save(self, commit=True):
+        expense = super().save(commit=False)
+        if self.company and not expense.company_id:
+            expense.company = self.company
+        if commit:
+            expense.save()
+            self.save_m2m()
+        return expense
