@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% block title %}Pneus · FleetISP{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-record-circle me-2"></i>Gestao de pneus</h2>
+    <div class="d-flex gap-2">
+        <a href="{% url 'vehicles:tire_events' %}" class="btn btn-outline-secondary"><i class="bi bi-clock-history"></i> Eventos</a>
+        <a href="{% url 'vehicles:tire_create' %}" class="btn btn-primary"><i class="bi bi-plus-circle"></i> Novo pneu</a>
+    </div>
+</div>
+<div class="card shadow-sm"><div class="card-body p-0"><div class="table-responsive">
+<table class="table table-hover align-middle mb-0">
+<thead class="table-light"><tr><th>Codigo</th><th>Marca/Modelo</th><th>Localizacao</th><th>Sulco</th><th>Status</th><th>Acoes</th></tr></thead>
+<tbody>
+{% for tire in tires %}
+<tr>
+<td><strong>{{ tire.code }}</strong><br><small class="text-muted">{{ tire.size|default:'Medida nao informada' }}</small></td>
+<td>{{ tire.brand }}{% if tire.model %} · {{ tire.model }}{% endif %}</td>
+<td>{% if tire.current_vehicle %}{{ tire.current_vehicle.plate }}{% if tire.position %} · {{ tire.position }}{% endif %}{% else %}<span class="text-muted">Estoque</span>{% endif %}</td>
+<td>{% if tire.current_tread_mm %}{{ tire.current_tread_mm }} mm{% else %}<span class="text-muted">-</span>{% endif %}</td>
+<td><span class="badge bg-secondary">{{ tire.get_status_display }}</span></td>
+<td>
+<a href="{% url 'vehicles:tire_detail' tire.pk %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a>
+<a href="{% url 'vehicles:tire_update' tire.pk %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a>
+<a href="{% url 'vehicles:tire_event_create' %}?tire={{ tire.pk }}" class="btn btn-sm btn-outline-success"><i class="bi bi-plus-lg"></i></a>
+<a href="{% url 'vehicles:tire_delete' tire.pk %}" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></a>
+</td>
+</tr>
+{% empty %}<tr><td colspan="6" class="text-center py-4 text-muted">Nenhum pneu cadastrado.</td></tr>{% endfor %}
+</tbody></table></div></div></div>
+{% include 'includes/pagination.html' %}
+{% endblock %}
