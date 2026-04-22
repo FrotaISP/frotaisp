@@ -9,21 +9,21 @@ from django.contrib.auth import login, update_session_auth_hash
 from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib import messages
 from django.http import JsonResponse
+from django.utils.text import slugify
 
-from apps.core.mixins import AdminRequiredMixin
+from apps.core.mixins import AdminRequiredMixin, get_user_company
 from .forms import (
     CustomAuthenticationForm, CustomUserCreationForm,
     UserEditForm, AdminPasswordResetForm, ProfileForm, UserSettingsForm,
 )
-from .models import UserProfile, Notificacao
+from .models import Company, UserProfile, Notificacao
 
 
-# ── Auth ──────────────────────────────────────────────────────────────────────
 class CustomLoginView(LoginView):
-    template_name            = 'accounts/login.html'
-    authentication_form      = CustomAuthenticationForm
+    template_name = 'accounts/login.html'
+    authentication_form = CustomAuthenticationForm
     redirect_authenticated_user = True
-    next_page                = reverse_lazy('dashboard:index')
+    next_page = reverse_lazy('dashboard:index')
 
 
 class CustomLogoutView(LogoutView):
@@ -31,23 +31,36 @@ class CustomLogoutView(LogoutView):
 
 
 class RegisterView(CreateView):
-    model         = User
-    form_class    = CustomUserCreationForm
+    model = User
+    form_class = CustomUserCreationForm
     template_name = 'accounts/register.html'
-    success_url   = reverse_lazy('dashboard:index')
+    success_url = reverse_lazy('dashboard:index')
 
     def get_form(self, form_class=None):
         form = super().get_form(form_class)
         form.fields.pop('role', None)
         return form
 
+    def _create_company_for_user(self, user):
+        base_name = f'{user.first_name} {user.last_name}'.strip() or user.username
+        name = f'{base_name} - Empresa'
+        base_slug = slugify(name) or f'empresa-{user.pk}'
+        slug = base_slug
+        suffix = 1
+        while Company.objects.filter(slug=slug).exists():
+            suffix += 1
+            slug = f'{base_slug}-{suffix}'
+        return Company.objects.create(name=name, slug=slug)
+
     def form_valid(self, form):
         user = form.save(commit=False)
         user.save()
-        profile, _ = UserProfile.objects.update_or_create(
+        company = self._create_company_for_user(user)
+        UserProfile.objects.update_or_create(
             user=user,
             defaults={
-                'role': 'viewer',
+                'company': company,
+                'role': 'admin',
                 'phone': form.cleaned_data.get('phone', ''),
             },
         )
@@ -56,7 +69,6 @@ class RegisterView(CreateView):
         return redirect(self.success_url)
 
 
-# ── Meu Perfil ────────────────────────────────────────────────────────────────
 class MyProfileView(LoginRequiredMixin, View):
     template_name = 'accounts/my_profile.html'
 
@@ -78,7 +90,7 @@ class MyProfileView(LoginRequiredMixin, View):
                 return redirect('accounts:my_profile')
 
         elif action == 'change_password':
-            profile_form  = ProfileForm(instance=request.user, user=request.user)
+            profile_form = ProfileForm(instance=request.user, user=request.user)
             password_form = PasswordChangeForm(user=request.user, data=request.POST)
             if password_form.is_valid():
                 update_session_auth_hash(request, password_form.save())
@@ -86,7 +98,7 @@ class MyProfileView(LoginRequiredMixin, View):
                 return redirect('accounts:my_profile')
 
         else:
-            profile_form  = ProfileForm(instance=request.user, user=request.user)
+            profile_form = ProfileForm(instance=request.user, user=request.user)
             password_form = PasswordChangeForm(user=request.user)
 
         return render(request, self.template_name, {
@@ -95,7 +107,6 @@ class MyProfileView(LoginRequiredMixin, View):
         })
 
 
-# ── Configurações ─────────────────────────────────────────────────────────────
 class SystemSettingsView(LoginRequiredMixin, View):
     template_name = 'accounts/settings.html'
 
@@ -106,21 +117,20 @@ class SystemSettingsView(LoginRequiredMixin, View):
     def get(self, request):
         profile = self._get_profile(request)
         return render(request, self.template_name, {
-            'form':         UserSettingsForm(instance=profile),
+            'form': UserSettingsForm(instance=profile),
             'user_profile': profile,
         })
 
     def post(self, request):
         profile = self._get_profile(request)
-        form    = UserSettingsForm(request.POST, instance=profile)
+        form = UserSettingsForm(request.POST, instance=profile)
         if form.is_valid():
             form.save()
-            messages.success(request, 'Configurações salvas.')
+            messages.success(request, 'Configuracoes salvas.')
             return redirect('accounts:settings')
         return render(request, self.template_name, {'form': form, 'user_profile': profile})
 
 
-# ── Notificações ──────────────────────────────────────────────────────────────
 class NotificacoesView(LoginRequiredMixin, View):
     template_name = 'accounts/notificacoes.html'
 
@@ -147,85 +157,115 @@ class MarcarTodasLidasView(LoginRequiredMixin, View):
         return redirect('accounts:notificacoes')
 
 
-# ── Gestão de usuários (Admin) ────────────────────────────────────────────────
 class UserListView(AdminRequiredMixin, ListView):
-    model              = User
-    template_name      = 'accounts/user_list.html'
+    model = User
+    template_name = 'accounts/user_list.html'
     context_object_name = 'users'
-    paginate_by        = 20
+    paginate_by = 20
 
     def get_queryset(self):
-        return User.objects.select_related('profile').order_by('username')
+        queryset = User.objects.select_related('profile', 'profile__company').order_by('username')
+        if self.request.user.is_superuser:
+            return queryset
+        return queryset.filter(profile__company=get_user_company(self.request.user))
 
 
 class UserCreateView(AdminRequiredMixin, CreateView):
-    model         = User
-    form_class    = CustomUserCreationForm
+    model = User
+    form_class = CustomUserCreationForm
     template_name = 'accounts/user_form.html'
-    success_url   = reverse_lazy('accounts:user_list')
+    success_url = reverse_lazy('accounts:user_list')
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['company'] = get_user_company(self.request.user)
+        return kwargs
 
     def form_valid(self, form):
-        r = super().form_valid(form)
-        messages.success(self.request, f'Usuário "{self.object.username}" criado.')
-        return r
+        response = super().form_valid(form)
+        messages.success(self.request, f'Usuario "{self.object.username}" criado.')
+        return response
 
     def get_context_data(self, **kwargs):
-        return {**super().get_context_data(**kwargs), 'title': 'Novo Usuário'}
+        return {**super().get_context_data(**kwargs), 'title': 'Novo Usuario'}
 
 
 class UserEditView(AdminRequiredMixin, View):
     template_name = 'accounts/user_form.html'
 
+    def get_queryset(self, request):
+        queryset = User.objects.select_related('profile', 'profile__company')
+        if request.user.is_superuser:
+            return queryset
+        return queryset.filter(profile__company=get_user_company(request.user))
+
     def get(self, request, pk):
-        u = get_object_or_404(User, pk=pk)
+        u = get_object_or_404(self.get_queryset(request), pk=pk)
         return render(request, self.template_name, {
-            'form': UserEditForm(instance=u), 'title': f'Editar — {u.username}', 'editing': True
+            'form': UserEditForm(instance=u, company=get_user_company(request)),
+            'title': f'Editar - {u.username}',
+            'editing': True,
         })
 
     def post(self, request, pk):
-        u    = get_object_or_404(User, pk=pk)
-        form = UserEditForm(request.POST, instance=u)
+        u = get_object_or_404(self.get_queryset(request), pk=pk)
+        form = UserEditForm(request.POST, instance=u, company=get_user_company(request.user))
         if form.is_valid():
             form.save()
-            messages.success(request, f'Usuário "{u.username}" atualizado.')
+            messages.success(request, f'Usuario "{u.username}" atualizado.')
             return redirect('accounts:user_list')
         return render(request, self.template_name, {
-            'form': form, 'title': f'Editar — {u.username}', 'editing': True
+            'form': form,
+            'title': f'Editar - {u.username}',
+            'editing': True,
         })
 
 
 class UserDeleteView(AdminRequiredMixin, View):
     template_name = 'accounts/user_confirm_delete.html'
 
+    def get_queryset(self, request):
+        queryset = User.objects.select_related('profile', 'profile__company')
+        if request.user.is_superuser:
+            return queryset
+        return queryset.filter(profile__company=get_user_company(request.user))
+
     def get(self, request, pk):
-        u = get_object_or_404(User, pk=pk)
+        u = get_object_or_404(self.get_queryset(request), pk=pk)
         if u == request.user:
-            messages.error(request, 'Não pode excluir sua própria conta.')
+            messages.error(request, 'Nao pode excluir sua propria conta.')
             return redirect('accounts:user_list')
         return render(request, self.template_name, {'target_user': u})
 
     def post(self, request, pk):
-        u = get_object_or_404(User, pk=pk)
+        u = get_object_or_404(self.get_queryset(request), pk=pk)
         if u == request.user:
-            messages.error(request, 'Não pode excluir sua própria conta.')
+            messages.error(request, 'Nao pode excluir sua propria conta.')
             return redirect('accounts:user_list')
         name = u.username
         u.delete()
-        messages.success(request, f'Usuário "{name}" excluído.')
+        messages.success(request, f'Usuario "{name}" excluido.')
         return redirect('accounts:user_list')
 
 
 class UserPasswordResetView(AdminRequiredMixin, View):
     template_name = 'accounts/user_password_reset.html'
 
+    def get_queryset(self, request):
+        queryset = User.objects.select_related('profile', 'profile__company')
+        if request.user.is_superuser:
+            return queryset
+        return queryset.filter(profile__company=get_user_company(request.user))
+
     def get(self, request, pk):
         return render(request, self.template_name, {
-            'form': AdminPasswordResetForm(), 'target_user': get_object_or_404(User, pk=pk)
+            'form': AdminPasswordResetForm(),
+            'target_user': get_object_or_404(self.get_queryset(request), pk=pk),
         })
 
     def post(self, request, pk):
-        target = get_object_or_404(User, pk=pk)
-        form   = AdminPasswordResetForm(request.POST)
+        target = get_object_or_404(self.get_queryset(request), pk=pk)
+        form = AdminPasswordResetForm(request.POST)
         if form.is_valid():
             target.set_password(form.cleaned_data['new_password'])
             target.save()
@@ -235,13 +275,19 @@ class UserPasswordResetView(AdminRequiredMixin, View):
 
 
 class UserToggleActiveView(AdminRequiredMixin, View):
+    def get_queryset(self, request):
+        queryset = User.objects.select_related('profile', 'profile__company')
+        if request.user.is_superuser:
+            return queryset
+        return queryset.filter(profile__company=get_user_company(request.user))
+
     def post(self, request, pk):
-        u = get_object_or_404(User, pk=pk)
+        u = get_object_or_404(self.get_queryset(request), pk=pk)
         if u == request.user:
-            messages.error(request, 'Não pode desativar sua própria conta.')
+            messages.error(request, 'Nao pode desativar sua propria conta.')
         else:
             u.is_active = not u.is_active
             u.save()
             estado = 'ativado' if u.is_active else 'desativado'
-            messages.success(request, f'Usuário "{u.username}" {estado}.')
+            messages.success(request, f'Usuario "{u.username}" {estado}.')
         return redirect('accounts:user_list')
