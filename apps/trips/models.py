@@ -4,6 +4,7 @@ from apps.core.models import TimeStampedModel
 from apps.vehicles.models import Vehicle
 from apps.drivers.models import Driver
 
+
 class Trip(TimeStampedModel):
     vehicle = models.ForeignKey(
         Vehicle,
@@ -37,3 +38,11 @@ class Trip(TimeStampedModel):
         if self.end_odometer:
             return self.end_odometer - self.start_odometer
         return 0
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+
+        latest_odometer = self.end_odometer or self.start_odometer
+        if latest_odometer > self.vehicle.current_odometer:
+            self.vehicle.current_odometer = latest_odometer
+            self.vehicle.save(update_fields=['current_odometer', 'updated_at'])
