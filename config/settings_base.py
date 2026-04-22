@@ -14,6 +14,10 @@ def split_csv(value):
     return [item.strip() for item in value.split(',') if item.strip()]
 
 
+def get_database_name():
+    return config('DB_NAME', default='').strip()
+
+
 SECRET_KEY = config('SECRET_KEY', default=INSECURE_DEV_SECRET)
 DEBUG = config('DEBUG', default=True, cast=bool)
 
@@ -86,15 +90,19 @@ TEMPLATES = [
 WSGI_APPLICATION = 'config.wsgi.application'
 ASGI_APPLICATION = 'config.asgi.application'
 
-if config('DB_NAME', default=''):
+DB_NAME = get_database_name()
+CONN_MAX_AGE = config('CONN_MAX_AGE', default=60, cast=int)
+
+if DB_NAME:
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
-            'NAME': config('DB_NAME'),
+            'NAME': DB_NAME,
             'USER': config('DB_USER', default=''),
             'PASSWORD': config('DB_PASSWORD', default=''),
             'HOST': config('DB_HOST', default='localhost'),
             'PORT': config('DB_PORT', default='5432'),
+            'CONN_MAX_AGE': CONN_MAX_AGE,
         }
     }
 else:
