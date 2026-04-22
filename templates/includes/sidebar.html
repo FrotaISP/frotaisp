@@ -20,6 +20,9 @@
             <a class="nav-link {% if request.resolver_match.url_name == 'checklists' %}active{% endif %}" href="{% url 'vehicles:checklists' %}">
                 <i class="bi bi-clipboard-check"></i> Checklists
             </a>
+            <a class="nav-link {% if request.resolver_match.url_name == 'tires' or request.resolver_match.url_name == 'tire_events' %}active{% endif %}" href="{% url 'vehicles:tires' %}">
+                <i class="bi bi-record-circle"></i> Pneus
+            </a>
             <a class="nav-link {% if request.resolver_match.app_name == 'drivers' %}active{% endif %}" href="{% url 'drivers:list' %}">
                 <i class="bi bi-person-badge"></i> Motoristas
             </a>
@@ -34,6 +37,12 @@
             </a>
             <a class="nav-link {% if request.resolver_match.url_name == 'plans' %}active{% endif %}" href="{% url 'maintenance:plans' %}">
                 <i class="bi bi-calendar2-check"></i> Preventivas
+            </a>
+            <a class="nav-link {% if request.resolver_match.url_name == 'work_orders' %}active{% endif %}" href="{% url 'maintenance:work_orders' %}">
+                <i class="bi bi-clipboard2-pulse"></i> Ordens de Servico
+            </a>
+            <a class="nav-link {% if request.resolver_match.url_name == 'expenses' %}active{% endif %}" href="{% url 'maintenance:expenses' %}">
+                <i class="bi bi-cash-coin"></i> Financeiro
             </a>
             <a class="nav-link {% if request.resolver_match.app_name == 'reports' %}active{% endif %}" href="{% url 'reports:dashboard' %}">
                 <i class="bi bi-file-earmark-bar-graph"></i> Relatorios
