@@ -1,5 +1,6 @@
 # apps/maintenance/forms.py
 from django import forms
+from django.db.models import Q
 from django.utils import timezone
 from apps.core.mixins import scope_related_queryset_for_user
 from apps.core.uploads import ALLOWED_DOCUMENT_TYPES, validate_uploaded_file
@@ -206,7 +207,10 @@ class WorkOrderForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.company = company or getattr(self.instance, 'company', None)
         if user:
-            self.fields['vehicle'].queryset = scope_related_queryset_for_user(Vehicle.objects.filter(is_active=True), user)
+            vehicle_filter = Q(is_active=True)
+            if self.instance and self.instance.vehicle_id:
+                vehicle_filter |= Q(pk=self.instance.vehicle_id)
+            self.fields['vehicle'].queryset = scope_related_queryset_for_user(Vehicle.objects.filter(vehicle_filter), user)
             self.fields['driver'].queryset = scope_related_queryset_for_user(Driver.objects.select_related('user'), user)
 
     def clean_vehicle(self):
@@ -260,8 +264,14 @@ class VehicleExpenseForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.company = company or getattr(self.instance, 'company', None)
         if user:
-            self.fields['vehicle'].queryset = scope_related_queryset_for_user(Vehicle.objects.filter(is_active=True), user)
-            self.fields['work_order'].queryset = scope_related_queryset_for_user(WorkOrder.objects.exclude(status__in=['completed', 'cancelled']), user)
+            vehicle_filter = Q(is_active=True)
+            if self.instance and self.instance.vehicle_id:
+                vehicle_filter |= Q(pk=self.instance.vehicle_id)
+            work_order_filter = ~Q(status__in=['completed', 'cancelled'])
+            if self.instance and self.instance.work_order_id:
+                work_order_filter |= Q(pk=self.instance.work_order_id)
+            self.fields['vehicle'].queryset = scope_related_queryset_for_user(Vehicle.objects.filter(vehicle_filter), user)
+            self.fields['work_order'].queryset = scope_related_queryset_for_user(WorkOrder.objects.filter(work_order_filter), user)
 
     def clean(self):
         cleaned = super().clean()
