@@ -2,19 +2,37 @@
 Django settings for frota_ISP project.
 """
 
-import os
 from pathlib import Path
 from decouple import config
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+INSECURE_DEV_SECRET = 'chave-secreta-insegura-para-dev'
 
-SECRET_KEY = config('SECRET_KEY', default='chave-secreta-insegura-para-dev')
+
+def split_csv(value):
+    return [item.strip() for item in value.split(',') if item.strip()]
+
+
+SECRET_KEY = config('SECRET_KEY', default=INSECURE_DEV_SECRET)
 DEBUG = config('DEBUG', default=True, cast=bool)
+
+if not DEBUG and SECRET_KEY == INSECURE_DEV_SECRET:
+    raise ValueError('Defina uma SECRET_KEY segura para execução com DEBUG=False.')
 
 ALLOWED_HOSTS = config(
     'ALLOWED_HOSTS',
-    default='*',
-    cast=lambda v: [s.strip() for s in v.split(',')]
+    default='localhost,127.0.0.1',
+    cast=split_csv,
+)
+CSRF_TRUSTED_ORIGINS = config(
+    'CSRF_TRUSTED_ORIGINS',
+    default='',
+    cast=split_csv,
+)
+CORS_ALLOWED_ORIGINS = config(
+    'CORS_ALLOWED_ORIGINS',
+    default='',
+    cast=split_csv,
 )
 
 INSTALLED_APPS = [
@@ -31,7 +49,7 @@ INSTALLED_APPS = [
 
     # Apps locais
     'apps.core',
-    'apps.accounts.apps.AccountsConfig',   # usa AppConfig para carregar signals
+    'apps.accounts.apps.AccountsConfig',
     'apps.vehicles',
     'apps.drivers',
     'apps.trips',
@@ -65,7 +83,6 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
-                # Injeta user_profile em todos os templates
                 'apps.accounts.context_processors.user_profile',
             ],
         },
@@ -74,12 +91,24 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+if config('DB_NAME', default=''):
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': config('DB_NAME'),
+            'USER': config('DB_USER', default=''),
+            'PASSWORD': config('DB_PASSWORD', default=''),
+            'HOST': config('DB_HOST', default='localhost'),
+            'PORT': config('DB_PORT', default='5432'),
+        }
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
@@ -115,3 +144,8 @@ REST_FRAMEWORK = {
 }
 
 CORS_ALLOW_ALL_ORIGINS = DEBUG
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = 'DENY'
