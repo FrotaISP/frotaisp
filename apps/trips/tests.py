@@ -2,8 +2,10 @@ from datetime import timedelta
 
 from django.contrib.auth.models import User
 from django.test import TestCase
+from django.urls import reverse
 from django.utils import timezone
 
+from apps.accounts.models import UserProfile
 from apps.drivers.models import Driver
 from apps.trips.forms import TripForm
 from apps.trips.models import Trip
@@ -132,3 +134,42 @@ class TripFormTests(TestCase):
 
         self.assertFalse(form.is_valid())
         self.assertIn('vehicle', form.errors)
+
+
+class TripViewIntegrationTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='trip-view-driver', password='senha123')
+        UserProfile.objects.update_or_create(user=self.user, defaults={'role': 'driver'})
+        self.driver = Driver.objects.create(
+            user=self.user,
+            cnh='77777777777',
+            cnh_expiration='2030-01-01',
+            phone='(62) 97777-0000',
+        )
+        self.vehicle = Vehicle.objects.create(
+            plate='TRP1234',
+            brand='Renault',
+            model='Duster',
+            year=2024,
+            fuel_type='F',
+            current_odometer=7000,
+        )
+        self.start = timezone.now().replace(second=0, microsecond=0)
+
+    def test_driver_can_create_trip_via_view(self):
+        self.client.force_login(self.user)
+
+        response = self.client.post(reverse('trips:create'), data={
+            'vehicle': self.vehicle.pk,
+            'driver': self.driver.pk,
+            'start_time': self.start.strftime('%Y-%m-%dT%H:%M'),
+            'end_time': (self.start + timedelta(hours=1)).strftime('%Y-%m-%dT%H:%M'),
+            'start_odometer': 7000,
+            'end_odometer': 7100,
+            'destination': 'Cliente X',
+            'purpose': 'Instalacao',
+            'service_order': 'OS-400',
+        })
+
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(Trip.objects.filter(service_order='OS-400').exists())
