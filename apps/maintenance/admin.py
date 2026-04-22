@@ -1,6 +1,6 @@
 # apps/maintenance/admin.py
 from django.contrib import admin
-from .models import Maintenance, PreventiveMaintenancePlan
+from .models import Maintenance, PreventiveMaintenancePlan, VehicleExpense, WorkOrder
 
 
 @admin.register(Maintenance)
@@ -21,4 +21,20 @@ class PreventiveMaintenancePlanAdmin(admin.ModelAdmin):
     list_display = ('service_name', 'vehicle', 'next_due_date', 'next_due_km', 'priority', 'status')
     list_filter = ('status', 'priority', 'next_due_date')
     search_fields = ('service_name', 'vehicle__plate', 'description')
+    readonly_fields = ('created_at', 'updated_at')
+
+
+@admin.register(WorkOrder)
+class WorkOrderAdmin(admin.ModelAdmin):
+    list_display = ('id', 'title', 'vehicle', 'category', 'priority', 'status', 'scheduled_date', 'actual_cost')
+    list_filter = ('status', 'priority', 'category', 'scheduled_date')
+    search_fields = ('title', 'vehicle__plate', 'driver__user__username', 'description')
+    readonly_fields = ('created_at', 'updated_at', 'opened_at', 'completed_at')
+
+
+@admin.register(VehicleExpense)
+class VehicleExpenseAdmin(admin.ModelAdmin):
+    list_display = ('description', 'vehicle', 'category', 'date', 'amount', 'supplier')
+    list_filter = ('category', 'date', 'vehicle')
+    search_fields = ('description', 'vehicle__plate', 'supplier', 'cost_center')
     readonly_fields = ('created_at', 'updated_at')
