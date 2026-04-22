@@ -1,0 +1,179 @@
+{% extends 'base.html' %}
+{% block title %}Rastreamento · FleetISP{% endblock %}
+{% block page_title %}<i class="bi bi-geo-alt-fill me-2 text-danger"></i>Rastreamento em tempo real{% endblock %}
+
+{% block extra_css %}
+<style>
+    .tracking-shell { display: grid; grid-template-columns: minmax(280px, 360px) 1fr; gap: 1rem; min-height: calc(100vh - 150px); }
+    .tracking-sidebar { max-height: calc(100vh - 165px); overflow-y: auto; }
+    #trackingMap { min-height: calc(100vh - 165px); border-radius: 1rem; }
+    .vehicle-card { cursor: pointer; transition: transform .15s ease, box-shadow .15s ease; }
+    .vehicle-card:hover { transform: translateY(-1px); box-shadow: 0 .5rem 1.25rem rgba(15, 23, 42, .10); }
+    .tracking-dot { width: .7rem; height: .7rem; border-radius: 999px; display: inline-block; }
+    .status-online { background: #198754; }
+    .status-delayed { background: #ffc107; }
+    .status-offline, .status-no_signal, .status-unknown { background: #6c757d; }
+    .vehicle-marker { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 999px; color: white; border: 3px solid white; box-shadow: 0 8px 24px rgba(0,0,0,.24); }
+    .vehicle-marker.online { background: #198754; }
+    .vehicle-marker.delayed { background: #ffc107; color: #1f2937; }
+    .vehicle-marker.offline, .vehicle-marker.no_signal, .vehicle-marker.unknown { background: #6c757d; }
+    @media (max-width: 991.98px) { .tracking-shell { grid-template-columns: 1fr; } #trackingMap { min-height: 70vh; } .tracking-sidebar { max-height: none; } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+    <div>
+        <h2 class="mb-1">Mapa da frota</h2>
+        <p class="text-muted mb-0">Atualizacao automatica a cada 10 segundos. Veiculos sem GPS aparecem na lista lateral.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <span class="badge bg-success fs-6">{{ tracked_count }} com posicao</span>
+        <span class="badge bg-secondary fs-6">{{ total_active_count }} ativos</span>
+    </div>
+</div>
+
+<div class="tracking-shell">
+    <aside class="tracking-sidebar">
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="text-uppercase small text-muted fw-semibold">Ultima leitura</span>
+                        <div id="lastUpdate" class="fw-semibold">Carregando...</div>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="refreshTracking"><i class="bi bi-arrow-clockwise"></i></button>
+                </div>
+            </div>
+        </div>
+        <div id="vehicleList" class="d-grid gap-3"></div>
+    </aside>
+    <section>
+        <div id="trackingMap" class="shadow-sm"></div>
+    </section>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script>
+(function () {
+    const endpoint = "{% url 'dashboard:tracking_positions' %}";
+    const vehicleList = document.getElementById('vehicleList');
+    const lastUpdate = document.getElementById('lastUpdate');
+    const refreshButton = document.getElementById('refreshTracking');
+    const map = L.map('trackingMap').setView([-14.235, -51.9253], 4);
+    const markers = new Map();
+    let hasFitBounds = false;
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; OpenStreetMap &copy; CARTO'
+    }).addTo(map);
+
+    function statusLabel(status) {
+        const labels = { online: 'Online', delayed: 'Atrasado', offline: 'Offline', no_signal: 'Sem sinal', unknown: 'Indefinido' };
+        return labels[status] || 'Indefinido';
+    }
+
+    function markerIcon(vehicle) {
+        const status = vehicle.status || 'unknown';
+        return L.divIcon({
+            html: `<div class="vehicle-marker ${status}"><i class="bi bi-truck-front-fill"></i></div>`,
+            className: '',
+            iconSize: [36, 36],
+            iconAnchor: [18, 18],
+            popupAnchor: [0, -18]
+        });
+    }
+
+    function popupHtml(vehicle) {
+        return `<strong>${vehicle.plate} · ${vehicle.model}</strong><br>` +
+            `Status: ${statusLabel(vehicle.status)}<br>` +
+            `Motorista: ${vehicle.driver || '-'}<br>` +
+            `Velocidade: ${vehicle.speed !== null ? vehicle.speed + ' km/h' : '-'}<br>` +
+            `Ultima posicao: ${vehicle.last_location_display}`;
+    }
+
+    function renderList(vehicles) {
+        if (!vehicles.length) {
+            vehicleList.innerHTML = '<div class="card border-0 shadow-sm"><div class="card-body text-muted text-center">Nenhum veiculo ativo encontrado.</div></div>';
+            return;
+        }
+        vehicleList.innerHTML = vehicles.map(vehicle => `
+            <div class="card border-0 shadow-sm vehicle-card" data-vehicle-id="${vehicle.id}">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start gap-2">
+                        <div>
+                            <strong>${vehicle.plate}</strong>
+                            <div class="text-muted small">${vehicle.brand} ${vehicle.model}</div>
+                        </div>
+                        <span class="badge ${vehicle.in_trip ? 'bg-primary' : 'bg-light text-dark'}">${vehicle.in_trip ? 'Em viagem' : 'Disponivel'}</span>
+                    </div>
+                    <div class="mt-3 small">
+                        <span class="tracking-dot status-${vehicle.status}"></span>
+                        <span class="ms-1">${statusLabel(vehicle.status)}</span>
+                        <span class="text-muted ms-2">${vehicle.last_location_display}</span>
+                    </div>
+                    <div class="mt-2 small text-muted">Motorista: ${vehicle.driver || '-'}</div>
+                    <div class="small text-muted">Velocidade: ${vehicle.speed !== null ? vehicle.speed + ' km/h' : '-'}</div>
+                </div>
+            </div>
+        `).join('');
+
+        vehicleList.querySelectorAll('.vehicle-card').forEach(card => {
+            card.addEventListener('click', () => {
+                const marker = markers.get(Number(card.dataset.vehicleId));
+                if (marker) {
+                    map.setView(marker.getLatLng(), 15);
+                    marker.openPopup();
+                }
+            });
+        });
+    }
+
+    function renderMarkers(vehicles) {
+        const seen = new Set();
+        const bounds = [];
+        vehicles.forEach(vehicle => {
+            if (vehicle.latitude === null || vehicle.longitude === null) return;
+            seen.add(vehicle.id);
+            const latLng = [vehicle.latitude, vehicle.longitude];
+            bounds.push(latLng);
+            if (markers.has(vehicle.id)) {
+                const marker = markers.get(vehicle.id);
+                marker.setLatLng(latLng);
+                marker.setIcon(markerIcon(vehicle));
+                marker.setPopupContent(popupHtml(vehicle));
+            } else {
+                const marker = L.marker(latLng, { icon: markerIcon(vehicle) }).addTo(map);
+                marker.bindPopup(popupHtml(vehicle));
+                markers.set(vehicle.id, marker);
+            }
+        });
+        markers.forEach((marker, id) => {
+            if (!seen.has(id)) {
+                map.removeLayer(marker);
+                markers.delete(id);
+            }
+        });
+        if (bounds.length && !hasFitBounds) {
+            map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
+            hasFitBounds = true;
+        }
+    }
+
+    async function loadTracking() {
+        const response = await fetch(endpoint, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+        if (!response.ok) throw new Error('Falha ao carregar rastreamento');
+        const payload = await response.json();
+        renderList(payload.vehicles);
+        renderMarkers(payload.vehicles);
+        lastUpdate.textContent = new Date(payload.updated_at).toLocaleTimeString('pt-BR');
+    }
+
+    refreshButton.addEventListener('click', loadTracking);
+    loadTracking().catch(() => { lastUpdate.textContent = 'Erro ao carregar'; });
+    setInterval(() => loadTracking().catch(() => {}), 10000);
+})();
+</script>
+{% endblock %}
