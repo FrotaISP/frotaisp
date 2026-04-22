@@ -37,6 +37,6 @@ jobs:
 
       - name: Run Django tests
         env:
-          DEBUG: 'True'
+          APP_ENV: test
           SECRET_KEY: ci-secret-key
         run: python manage.py test
