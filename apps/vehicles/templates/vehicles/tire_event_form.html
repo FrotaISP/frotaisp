@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% block title %}{% if object %}Editar evento{% else %}Novo evento{% endif %} · FleetISP{% endblock %}
+{% block content %}
+<h2 class="mb-4"><i class="bi bi-clock-history me-2"></i>{% if object %}Editar evento de pneu{% else %}Novo evento de pneu{% endif %}</h2>
+<div class="card shadow-sm"><div class="card-body"><form method="post" novalidate>{% csrf_token %}{% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+<div class="row"><div class="col-md-4 mb-3"><label class="form-label">Pneu *</label>{{ form.tire }}{{ form.tire.errors }}</div><div class="col-md-4 mb-3"><label class="form-label">Evento *</label>{{ form.event_type }}{{ form.event_type.errors }}</div><div class="col-md-4 mb-3"><label class="form-label">Data *</label>{{ form.date }}{{ form.date.errors }}</div></div>
+<div class="row"><div class="col-md-4 mb-3"><label class="form-label">Veiculo</label>{{ form.vehicle }}{{ form.vehicle.errors }}</div><div class="col-md-4 mb-3"><label class="form-label">Posicao</label>{{ form.position }}{{ form.position.errors }}</div><div class="col-md-4 mb-3"><label class="form-label">Hodometro</label>{{ form.odometer }}{{ form.odometer.errors }}</div></div>
+<div class="row"><div class="col-md-6 mb-3"><label class="form-label">Sulco medido (mm)</label>{{ form.tread_mm }}{{ form.tread_mm.errors }}</div><div class="col-md-6 mb-3"><label class="form-label">Custo</label>{{ form.cost }}{{ form.cost.errors }}</div></div>
+<div class="mb-3"><label class="form-label">Observacoes</label>{{ form.notes }}{{ form.notes.errors }}</div>
+<button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Salvar</button> <a href="{% url 'vehicles:tire_events' %}" class="btn btn-secondary">Cancelar</a>
+</form></div></div>
+{% endblock %}
