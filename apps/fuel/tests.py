@@ -1,3 +1,4 @@
+from datetime import timedelta
 from decimal import Decimal
 
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -58,7 +59,7 @@ class FuelRecordFormTests(TestCase):
         return FuelRecordForm(data=data)
 
     def test_rejects_future_fuel_date(self):
-        form = self.build_form(date=(timezone.localdate() + timezone.timedelta(days=1)).isoformat())
+        form = self.build_form(date=(timezone.localdate() + timedelta(days=1)).isoformat())
 
         self.assertFalse(form.is_valid())
         self.assertIn('date', form.errors)
