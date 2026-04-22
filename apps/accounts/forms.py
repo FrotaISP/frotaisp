@@ -2,7 +2,7 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth.models import User
-from .models import UserProfile
+from .models import Company, UserProfile
 
 
 class CustomAuthenticationForm(AuthenticationForm):
@@ -137,4 +137,15 @@ class UserSettingsForm(forms.ModelForm):
         fields = ('phone',)
         widgets = {
             'phone': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '(99) 99999-9999'}),
+        }
+
+
+class CompanyBillingForm(forms.ModelForm):
+    class Meta:
+        model = Company
+        fields = ('name', 'billing_email', 'billing_document')
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'billing_email': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'financeiro@empresa.com'}),
+            'billing_document': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'CPF ou CNPJ'}),
         }
