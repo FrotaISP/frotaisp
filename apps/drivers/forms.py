@@ -2,6 +2,7 @@
 from django import forms
 from django.contrib.auth.models import User
 from apps.accounts.models import UserProfile
+from apps.core.uploads import ALLOWED_IMAGE_TYPES, validate_uploaded_file
 from .models import Driver
 
 
@@ -79,6 +80,18 @@ class DriverCreateForm(forms.Form):
             raise forms.ValidationError('Esta CNH já está cadastrada.')
         return cnh
 
+    def clean_avatar(self):
+        avatar = self.cleaned_data.get('avatar')
+        try:
+            validate_uploaded_file(
+                avatar,
+                allowed_types=ALLOWED_IMAGE_TYPES,
+                label='A foto do motorista',
+            )
+        except ValueError as exc:
+            raise forms.ValidationError(str(exc)) from exc
+        return avatar
+
     def save(self):
         data = self.cleaned_data
         user = User.objects.create_user(
@@ -141,6 +154,18 @@ class DriverUpdateForm(forms.ModelForm):
             self.fields['first_name'].initial = self.instance.user.first_name
             self.fields['last_name'].initial  = self.instance.user.last_name
             self.fields['email'].initial      = self.instance.user.email
+
+    def clean_avatar(self):
+        avatar = self.cleaned_data.get('avatar')
+        try:
+            validate_uploaded_file(
+                avatar,
+                allowed_types=ALLOWED_IMAGE_TYPES,
+                label='A foto do motorista',
+            )
+        except ValueError as exc:
+            raise forms.ValidationError(str(exc)) from exc
+        return avatar
 
     def save(self, commit=True):
         driver = super().save(commit=False)
