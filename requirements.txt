@@ -1,0 +1,9 @@
+Django>=4.2,<5.0
+djangorestframework>=3.14
+django-cors-headers>=4.0
+psycopg2-binary>=2.9          # para PostgreSQL
+Pillow>=9.5                   # para ImageField
+WeasyPrint>=60                 # para geração de PDF
+openpyxl>=3.1                  # para relatórios Excel
+python-decouple>=3.8           # para variáveis de ambiente
+gunicorn>=21.2                 # para deploy

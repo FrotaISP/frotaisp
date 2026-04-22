@@ -1,0 +1,1 @@
+# apps/trips/__init__.py

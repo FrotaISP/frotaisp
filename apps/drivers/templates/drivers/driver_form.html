@@ -1,0 +1,155 @@
+{% extends 'base.html' %}
+
+{% block title %}
+    {% if object %}Editar Motorista{% else %}Novo Motorista{% endif %} · FleetISP
+{% endblock %}
+
+{% block page_title %}
+    <i class="bi bi-person-badge me-2 text-primary"></i>
+    {% if object %}Editar {{ object.user.get_full_name }}{% else %}Novo Motorista{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white py-3">
+                <h5 class="mb-0 fw-semibold">
+                    <i class="bi bi-person-plus me-2 text-primary"></i>
+                    {% if object %}Editar dados do motorista{% else %}Cadastrar novo motorista{% endif %}
+                </h5>
+            </div>
+            <div class="card-body p-4">
+                <form method="post" enctype="multipart/form-data" novalidate>
+                    {% csrf_token %}
+
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+                    {% endif %}
+
+                    <!-- SEÇÃO: Dados pessoais -->
+                    <h6 class="text-uppercase text-muted fw-semibold mb-3 border-bottom pb-2">
+                        <i class="bi bi-person me-1"></i> Dados Pessoais
+                    </h6>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-medium">Nome <span class="text-danger">*</span></label>
+                            {{ form.first_name }}
+                            {% if form.first_name.errors %}
+                                <div class="text-danger small mt-1">{{ form.first_name.errors|striptags }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-medium">Sobrenome <span class="text-danger">*</span></label>
+                            {{ form.last_name }}
+                            {% if form.last_name.errors %}
+                                <div class="text-danger small mt-1">{{ form.last_name.errors|striptags }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-medium">Telefone <span class="text-danger">*</span></label>
+                            {{ form.phone }}
+                            {% if form.phone.errors %}
+                                <div class="text-danger small mt-1">{{ form.phone.errors|striptags }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-medium">E-mail</label>
+                            {{ form.email }}
+                            {% if form.email.errors %}
+                                <div class="text-danger small mt-1">{{ form.email.errors|striptags }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-medium">Endereço</label>
+                        {{ form.address }}
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-medium">Foto</label>
+                        {{ form.avatar }}
+                        {% if object and object.avatar %}
+                            <div class="mt-2">
+                                <img src="{{ object.avatar.url }}" height="60" class="rounded" alt="foto atual">
+                                <small class="text-muted ms-2">Foto atual</small>
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- SEÇÃO: Dados da CNH -->
+                    <h6 class="text-uppercase text-muted fw-semibold mb-3 border-bottom pb-2">
+                        <i class="bi bi-card-text me-1"></i> Habilitação (CNH)
+                    </h6>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-medium">Número da CNH <span class="text-danger">*</span></label>
+                            {{ form.cnh }}
+                            {% if form.cnh.errors %}
+                                <div class="text-danger small mt-1">{{ form.cnh.errors|striptags }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-medium">Validade da CNH <span class="text-danger">*</span></label>
+                            {{ form.cnh_expiration }}
+                            {% if form.cnh_expiration.errors %}
+                                <div class="text-danger small mt-1">{{ form.cnh_expiration.errors|striptags }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <div class="form-check">
+                            {{ form.is_available }}
+                            <label class="form-check-label fw-medium">Motorista disponível para viagens</label>
+                        </div>
+                    </div>
+
+                    <!-- SEÇÃO: Acesso ao sistema (só no cadastro) -->
+                    {% if not object %}
+                    <h6 class="text-uppercase text-muted fw-semibold mb-3 border-bottom pb-2">
+                        <i class="bi bi-key me-1"></i> Acesso ao Sistema
+                    </h6>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-medium">Login <span class="text-danger">*</span></label>
+                            {{ form.username }}
+                            {% if form.username.errors %}
+                                <div class="text-danger small mt-1">{{ form.username.errors|striptags }}</div>
+                            {% endif %}
+                            <div class="form-text">Usado para entrar no sistema. Ex: carlos.silva</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-medium">Senha <span class="text-danger">*</span></label>
+                            {{ form.password }}
+                            {% if form.password.errors %}
+                                <div class="text-danger small mt-1">{{ form.password.errors|striptags }}</div>
+                            {% endif %}
+                            <div class="form-text">Mínimo 6 caracteres.</div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Botões -->
+                    <div class="d-flex gap-2 mt-3 pt-3 border-top">
+                        <button type="submit" class="btn btn-primary px-4">
+                            <i class="bi bi-check-lg me-1"></i>
+                            {% if object %}Salvar alterações{% else %}Cadastrar motorista{% endif %}
+                        </button>
+                        <a href="{% url 'drivers:list' %}" class="btn btn-outline-secondary px-4">
+                            <i class="bi bi-x me-1"></i> Cancelar
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

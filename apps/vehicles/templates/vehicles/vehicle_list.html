@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+
+{% block title %}Veículos · FleetISP{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-truck me-2"></i>Veículos</h2>
+    <a href="{% url 'vehicles:create' %}" class="btn btn-primary">
+        <i class="bi bi-plus-circle"></i> Novo Veículo
+    </a>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Placa</th>
+                        <th>Modelo</th>
+                        <th>Marca</th>
+                        <th>Ano</th>
+                        <th>Km Atual</th>
+                        <th>Status</th>
+                        <th>Motorista</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for vehicle in vehicles %}
+                    <tr>
+                        <td><span class="badge bg-light text-dark">{{ vehicle.plate }}</span></td>
+                        <td>{{ vehicle.model }}</td>
+                        <td>{{ vehicle.brand }}</td>
+                        <td>{{ vehicle.year }}</td>
+                        <td>{{ vehicle.current_odometer }} km</td>
+                        <td>
+                            {% if vehicle.is_active %}
+                                <span class="badge bg-success bg-opacity-10 text-success">Ativo</span>
+                            {% else %}
+                                <span class="badge bg-secondary bg-opacity-10 text-secondary">Inativo</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if vehicle.current_driver %}
+                                {{ vehicle.current_driver.user.get_full_name }}
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{% url 'vehicles:detail' vehicle.pk %}" class="btn btn-sm btn-outline-primary me-1" title="Ver">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            <a href="{% url 'vehicles:update' vehicle.pk %}" class="btn btn-sm btn-outline-secondary me-1" title="Editar">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <a href="{% url 'vehicles:delete' vehicle.pk %}" class="btn btn-sm btn-outline-danger" title="Excluir">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-center py-4 text-muted">
+                            Nenhum veículo cadastrado.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% if is_paginated %}
+<nav class="mt-4">
+    <ul class="pagination justify-content-center">
+        {% if page_obj.has_previous %}
+        <li class="page-item">
+            <a class="page-link" href="?page=1">&laquo; Primeira</a>
+        </li>
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a>
+        </li>
+        {% endif %}
+
+        <li class="page-item active">
+            <span class="page-link">
+                Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+            </span>
+        </li>
+
+        {% if page_obj.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.next_page_number }}">Próxima</a>
+        </li>
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Última &raquo;</a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+{% endblock %}

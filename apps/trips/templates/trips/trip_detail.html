@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+
+{% block title %}Viagem #{{ trip.pk }} · FleetISP{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-map me-2"></i>Viagem #{{ trip.pk }}</h2>
+    <div>
+        <a href="{% url 'trips:update' trip.pk %}" class="btn btn-outline-secondary">
+            <i class="bi bi-pencil"></i> Editar
+        </a>
+        <a href="{% url 'trips:delete' trip.pk %}" class="btn btn-outline-danger">
+            <i class="bi bi-trash"></i> Excluir
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">Informações da Viagem</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless">
+                    <tr><th width="30%">Veículo:</th><td>{{ trip.vehicle.plate }} - {{ trip.vehicle.model }}</td></tr>
+                    <tr><th>Motorista:</th><td>{{ trip.driver.user.get_full_name }}</td></tr>
+                    <tr><th>Início:</th><td>{{ trip.start_time|date:"d/m/Y H:i" }}</td></tr>
+                    <tr><th>Fim:</th><td>{{ trip.end_time|date:"d/m/Y H:i"|default:"Em andamento" }}</td></tr>
+                    <tr><th>Km Inicial:</th><td>{{ trip.start_odometer }} km</td></tr>
+                    <tr><th>Km Final:</th><td>{{ trip.end_odometer|default:"—" }} km</td></tr>
+                    <tr><th>Distância percorrida:</th><td><strong>{{ trip.distance }} km</strong></td></tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">Detalhes da OS</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless">
+                    <tr><th width="30%">Destino:</th><td>{{ trip.destination }}</td></tr>
+                    <tr><th>Propósito:</th><td>{{ trip.purpose|linebreaksbr }}</td></tr>
+                    <tr><th>Nº OS:</th><td>{{ trip.service_order|default:"—" }}</td></tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="mt-3">
+    <a href="{% url 'trips:list' %}" class="btn btn-secondary">
+        <i class="bi bi-arrow-left"></i> Voltar para lista
+    </a>
+</div>
+{% endblock %}

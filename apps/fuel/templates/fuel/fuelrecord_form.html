@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+
+{% block title %}
+    {% if object %}Editar Abastecimento{% else %}Novo Abastecimento{% endif %} · FleetISP
+{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">
+    <i class="bi bi-fuel-pump me-2"></i>
+    {% if object %}Editar Abastecimento #{{ object.pk }}{% else %}Registrar Abastecimento{% endif %}
+</h2>
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <form method="post" enctype="multipart/form-data" novalidate>
+            {% csrf_token %}
+            
+            {% if form.non_field_errors %}
+                <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+            {% endif %}
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="{{ form.vehicle.id_for_label }}" class="form-label">Veículo *</label>
+                    {{ form.vehicle }}
+                    {{ form.vehicle.errors }}
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="{{ form.date.id_for_label }}" class="form-label">Data *</label>
+                    {{ form.date }}
+                    {{ form.date.errors }}
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label for="{{ form.liters.id_for_label }}" class="form-label">Litros *</label>
+                    {{ form.liters }}
+                    {{ form.liters.errors }}
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="{{ form.price_per_liter.id_for_label }}" class="form-label">Preço por Litro (R$) *</label>
+                    {{ form.price_per_liter }}
+                    {{ form.price_per_liter.errors }}
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="{{ form.odometer.id_for_label }}" class="form-label">Km no Abastecimento *</label>
+                    {{ form.odometer }}
+                    {{ form.odometer.errors }}
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label for="{{ form.gas_station.id_for_label }}" class="form-label">Posto *</label>
+                {{ form.gas_station }}
+                {{ form.gas_station.errors }}
+            </div>
+
+            <div class="mb-3">
+                <label for="{{ form.receipt.id_for_label }}" class="form-label">Nota Fiscal (opcional)</label>
+                {{ form.receipt }}
+                {{ form.receipt.errors }}
+            </div>
+
+            <div class="alert alert-info small">
+                <i class="bi bi-info-circle"></i> O custo total será calculado automaticamente.
+            </div>
+
+            <div class="mt-4">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-lg"></i> Salvar
+                </button>
+                <a href="{% url 'fuel:list' %}" class="btn btn-secondary">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Adiciona classes Bootstrap
+        document.querySelectorAll('input:not([type="file"]), select, textarea').forEach(el => {
+            el.classList.add('form-control');
+        });
+        document.querySelectorAll('input[type="file"]').forEach(el => {
+            el.classList.add('form-control');
+        });
+        // Define tipo date para o campo de data
+        const dateInput = document.getElementById('{{ form.date.id_for_label }}');
+        if (dateInput) dateInput.type = 'date';
+    });
+</script>
+{% endblock %}

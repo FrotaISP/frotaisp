@@ -1,0 +1,43 @@
+<!-- templates/includes/sidebar.html -->
+<div class="col-md-3 col-lg-2 d-md-block sidebar p-0">
+    <div class="d-flex flex-column">
+        <div class="p-4 pb-3 border-bottom border-secondary border-opacity-25">
+            <h4 class="text-white fw-bold mb-0">
+                <i class="bi bi-truck me-2"></i>Fleet<span class="fw-light">ISP</span>
+            </h4>
+            <small class="text-white-50">Gestão de Frotas · v1.0</small>
+        </div>
+        <nav class="nav flex-column mt-3">
+            <a class="nav-link {% if request.resolver_match.app_name == 'dashboard' %}active{% endif %}" href="{% url 'dashboard:index' %}">
+                <i class="bi bi-speedometer2"></i> Dashboard
+            </a>
+            <a class="nav-link {% if request.resolver_match.app_name == 'vehicles' %}active{% endif %}" href="{% url 'vehicles:list' %}">
+                <i class="bi bi-car-front"></i> Veículos
+            </a>
+            <a class="nav-link {% if request.resolver_match.app_name == 'drivers' %}active{% endif %}" href="{% url 'drivers:list' %}">
+                <i class="bi bi-person-badge"></i> Motoristas
+            </a>
+            <a class="nav-link {% if request.resolver_match.app_name == 'trips' %}active{% endif %}" href="{% url 'trips:list' %}">
+                <i class="bi bi-map"></i> Viagens
+            </a>
+            <a class="nav-link {% if request.resolver_match.app_name == 'fuel' %}active{% endif %}" href="{% url 'fuel:list' %}">
+                <i class="bi bi-fuel-pump"></i> Combustível
+            </a>
+            <a class="nav-link {% if request.resolver_match.app_name == 'maintenance' %}active{% endif %}" href="{% url 'maintenance:list' %}">
+                <i class="bi bi-tools"></i> Manutenções
+            </a>
+            <a class="nav-link {% if request.resolver_match.app_name == 'reports' %}active{% endif %}" href="{% url 'reports:selector' %}">
+                <i class="bi bi-file-earmark-bar-graph"></i> Relatórios
+            </a>
+        </nav>
+        <div class="mt-auto p-3 border-top border-secondary border-opacity-25">
+            <div class="d-flex align-items-center text-white">
+                <i class="bi bi-person-circle fs-3 me-2"></i>
+                <div>
+                    <span class="d-block">{{ request.user.get_full_name|default:request.user.username }}</span>
+                    <small class="text-white-50">{{ request.user.groups.all.0.name|default:"Gestor" }}</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

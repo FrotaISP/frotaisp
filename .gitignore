@@ -1,0 +1,96 @@
+# ==============================================
+# Django
+# ==============================================
+*.log
+*.pot
+*.pyc
+*.pyo
+__pycache__/
+db.sqlite3
+db.sqlite3-journal
+
+# Arquivos de mídia e estáticos (não versionar uploads de usuários)
+/media/
+/staticfiles/
+
+# Migrações (opcional - alguns times versionam, outros não)
+# */migrations/*.py
+# !*/migrations/__init__.py
+
+# ==============================================
+# Ambiente virtual
+# ==============================================
+venv/
+env/
+.venv/
+.env/
+env.bak/
+venv.bak/
+pythonenv*
+
+# ==============================================
+# Variáveis de ambiente (contém senhas)
+# ==============================================
+.env
+.env.*
+!.env.example
+
+# ==============================================
+# IDEs e editores
+# ==============================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+*.sublime-*
+
+# ==============================================
+# Sistema operacional
+# ==============================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+*.tmp
+
+# ==============================================
+# Testes e cobertura
+# ==============================================
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.pytest_cache/
+.hypothesis/
+*.cover
+nosetests.xml
+coverage.xml
+
+# ==============================================
+# Docker (volumes e dados)
+# ==============================================
+docker/volumes/
+*.pid
+
+# ==============================================
+# Backups e arquivos temporários
+# ==============================================
+*.bak
+*.backup
+*.old
+*.orig
+*.rej
+
+# ==============================================
+# Outros
+# ==============================================
+celerybeat-schedule
+celerybeat.pid
+*.sage.py

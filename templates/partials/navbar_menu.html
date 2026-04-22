@@ -1,0 +1,91 @@
+{# Inclua este bloco no seu base.html, dentro da navbar, onde ficam os links do menu #}
+
+{# ─── Menu principal ──────────────────────────────────────────────────────────── #}
+<ul class="navbar-nav me-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="{% url 'dashboard:index' %}">
+      <i class="bi bi-speedometer2 me-1"></i>Dashboard
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" href="{% url 'vehicles:list' %}">
+      <i class="bi bi-truck me-1"></i>Veículos
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" href="{% url 'drivers:list' %}">
+      <i class="bi bi-person-badge me-1"></i>Motoristas
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" href="{% url 'fuel:list' %}">
+      <i class="bi bi-fuel-pump me-1"></i>Combustível
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" href="{% url 'maintenance:list' %}">
+      <i class="bi bi-tools me-1"></i>Manutenções
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" href="{% url 'trips:list' %}">
+      <i class="bi bi-map me-1"></i>Viagens
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" href="{% url 'reports:index' %}">
+      <i class="bi bi-bar-chart me-1"></i>Relatórios
+    </a>
+  </li>
+
+  {# Link de usuários visível apenas para admins #}
+  {% if user_profile.is_admin %}
+  <li class="nav-item">
+    <a class="nav-link" href="{% url 'accounts:user_list' %}">
+      <i class="bi bi-people me-1"></i>Usuários
+    </a>
+  </li>
+  {% endif %}
+</ul>
+
+{# ─── Usuário logado (canto direito) ─────────────────────────────────────────── #}
+{% if user.is_authenticated %}
+<ul class="navbar-nav ms-auto">
+  <li class="nav-item dropdown">
+    <a class="nav-link dropdown-toggle d-flex align-items-center gap-2"
+       href="#" data-bs-toggle="dropdown">
+      <i class="bi bi-person-circle fs-5"></i>
+      <span>{{ user.get_full_name|default:user.username }}</span>
+      {% if user_profile %}
+        {% if user_profile.role == 'admin' %}
+          <span class="badge bg-danger">Admin</span>
+        {% elif user_profile.role == 'manager' %}
+          <span class="badge bg-warning text-dark">Gestor</span>
+        {% elif user_profile.role == 'operator' %}
+          <span class="badge bg-info text-dark">Operador</span>
+        {% else %}
+          <span class="badge bg-secondary">Viewer</span>
+        {% endif %}
+      {% endif %}
+    </a>
+    <ul class="dropdown-menu dropdown-menu-end">
+      {% if user_profile.is_admin %}
+      <li>
+        <a class="dropdown-item" href="{% url 'accounts:user_list' %}">
+          <i class="bi bi-people me-2"></i>Gerenciar Usuários
+        </a>
+      </li>
+      <li><hr class="dropdown-divider"></li>
+      {% endif %}
+      <li>
+        <form method="post" action="{% url 'accounts:logout' %}">
+          {% csrf_token %}
+          <button type="submit" class="dropdown-item text-danger">
+            <i class="bi bi-box-arrow-right me-2"></i>Sair
+          </button>
+        </form>
+      </li>
+    </ul>
+  </li>
+</ul>
+{% endif %}

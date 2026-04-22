@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+
+{% block title %}Relatórios · FleetISP{% endblock %}
+
+{% block content %}
+<h2 class="mb-4"><i class="bi bi-file-earmark-bar-graph me-2"></i>Relatórios Gerenciais</h2>
+
+<div class="row">
+    <!-- Card: Relatório de Combustível -->
+    <div class="col-md-6 mb-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="bi bi-fuel-pump me-2 text-primary"></i>Consumo de Combustível</h5>
+            </div>
+            <div class="card-body">
+                <p>Relatório detalhado de abastecimentos com totais por período.</p>
+                <form method="get" action="{% url 'reports:fuel_pdf' %}" target="_blank">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Data Início</label>
+                            <input type="date" name="start_date" class="form-control" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Data Fim</label>
+                            <input type="date" name="end_date" class="form-control" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Veículo (opcional)</label>
+                        <select name="vehicle" class="form-select">
+                            <option value="">Todos os veículos</option>
+                            <!-- Opções podem ser preenchidas via contexto -->
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-file-earmark-pdf"></i> Gerar PDF
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Card: Relatório de Viagens -->
+    <div class="col-md-6 mb-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="bi bi-map me-2 text-success"></i>Viagens / Ordens de Serviço</h5>
+            </div>
+            <div class="card-body">
+                <p>Relatório de viagens realizadas, com distâncias percorridas.</p>
+                <form method="get" action="{% url 'reports:trip_pdf' %}" target="_blank">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Data Início</label>
+                            <input type="date" name="start_date" class="form-control" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Data Fim</label>
+                            <input type="date" name="end_date" class="form-control" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Veículo (opcional)</label>
+                        <select name="vehicle" class="form-select">
+                            <option value="">Todos os veículos</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-success w-100">
+                        <i class="bi bi-file-earmark-pdf"></i> Gerar PDF
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Card: Relatório de Manutenções (exemplo futuro) -->
+    <div class="col-md-6 mb-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="bi bi-tools me-2 text-warning"></i>Manutenções</h5>
+            </div>
+            <div class="card-body">
+                <p>Histórico de manutenções e custos por veículo.</p>
+                <button class="btn btn-warning w-100" disabled>
+                    <i class="bi bi-file-earmark-pdf"></i> Em breve
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

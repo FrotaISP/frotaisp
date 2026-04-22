@@ -1,0 +1,111 @@
+<!-- apps/reports/templates/reports/fuel_report.html -->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Relatório de Combustível</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 2cm;
+            color: #333;
+        }
+        h1 {
+            color: #0d6efd;
+            border-bottom: 2px solid #0d6efd;
+            padding-bottom: 10px;
+        }
+        .header-info {
+            margin-bottom: 30px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th {
+            background-color: #f2f2f2;
+            text-align: left;
+            padding: 8px;
+        }
+        td {
+            padding: 8px;
+            border-bottom: 1px solid #ddd;
+        }
+        .summary {
+            margin: 20px 0;
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        .footer {
+            margin-top: 40px;
+            font-size: 12px;
+            color: #666;
+            text-align: right;
+        }
+        .text-end {
+            text-align: right;
+        }
+    </style>
+</head>
+<body>
+    <h1>Relatório de Consumo de Combustível</h1>
+    
+    <div class="header-info">
+        <p><strong>Período:</strong> {{ summary.start_date|date:"d/m/Y" }} a {{ summary.end_date|date:"d/m/Y" }}</p>
+        <p><strong>Veículo:</strong> 
+            {% if summary.records.first.vehicle %}
+                {{ summary.records.first.vehicle.plate }} - {{ summary.records.first.vehicle.model }}
+            {% else %}
+                Todos
+            {% endif %}
+        </p>
+    </div>
+
+    <div class="summary">
+        <h3>Resumo</h3>
+        <p><strong>Total de abastecimentos:</strong> {{ summary.count }}</p>
+        <p><strong>Total de litros:</strong> {{ summary.total_liters|floatformat:2 }} L</p>
+        <p><strong>Custo total:</strong> R$ {{ summary.total_cost|floatformat:2 }}</p>
+        <p><strong>Preço médio por litro:</strong> R$ {{ avg_price_per_liter|floatformat:3 }}</p>
+    </div>
+
+    <h3>Detalhamento dos Abastecimentos</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Data</th>
+                <th>Veículo</th>
+                <th>Litros</th>
+                <th>Preço/L</th>
+                <th>Total</th>
+                <th>Km</th>
+                <th>Posto</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for record in summary.records %}
+            <tr>
+                <td>{{ record.date|date:"d/m/Y" }}</td>
+                <td>{{ record.vehicle.plate }}</td>
+                <td>{{ record.liters }}</td>
+                <td>R$ {{ record.price_per_liter }}</td>
+                <td>R$ {{ record.total_cost }}</td>
+                <td>{{ record.odometer }}</td>
+                <td>{{ record.gas_station }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="7">Nenhum abastecimento no período.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="footer">
+        Relatório gerado em {{ generated_at|date:"d/m/Y H:i" }}<br>
+        FleetISP - Sistema de Gerenciamento de Frotas
+    </div>
+</body>
+</html>

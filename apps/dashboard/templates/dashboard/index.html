@@ -1,0 +1,363 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard · FleetISP</title>
+    <!-- Bootstrap 5 + Ícones -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Estilos customizados -->
+    <link rel="stylesheet" href="{% static 'css/custom.css' %}">
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <div class="col-md-3 col-lg-2 d-md-block sidebar p-0">
+                <div class="d-flex flex-column">
+                    <div class="p-4 pb-3 border-bottom border-secondary border-opacity-25">
+                        <h4 class="text-white fw-bold mb-0">
+                            <i class="bi bi-truck me-2"></i>Fleet<span class="fw-light">ISP</span>
+                        </h4>
+                        <small class="text-white-50">Gestão de Frotas · v1.0</small>
+                    </div>
+                    <nav class="nav flex-column mt-3">
+                        <a class="nav-link active" href="{% url 'dashboard:index' %}"><i class="bi bi-speedometer2"></i> Dashboard</a>
+                        <a class="nav-link" href="{% url 'vehicles:list' %}"><i class="bi bi-car-front"></i> Veículos</a>
+                        <a class="nav-link" href="{% url 'drivers:list' %}"><i class="bi bi-person-badge"></i> Motoristas</a>
+                        <a class="nav-link" href="{% url 'trips:list' %}"><i class="bi bi-map"></i> Viagens</a>
+                        <a class="nav-link" href="{% url 'fuel:list' %}"><i class="bi bi-fuel-pump"></i> Combustível</a>
+                        <a class="nav-link" href="{% url 'maintenance:list' %}"><i class="bi bi-tools"></i> Manutenções</a>
+                        <a class="nav-link" href="{% url 'reports:selector' %}"><i class="bi bi-file-earmark-bar-graph"></i> Relatórios</a>
+                    </nav>
+                    <div class="mt-auto p-3 border-top border-secondary border-opacity-25">
+                        <div class="d-flex align-items-center text-white">
+                            <i class="bi bi-person-circle fs-3 me-2"></i>
+                            <div>
+                                <span class="d-block">{{ request.user.get_full_name|default:request.user.username }}</span>
+                                <small class="text-white-50">{{ request.user.groups.all.0.name|default:"Gestor" }}</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main content -->
+            <div class="col-md-9 col-lg-10 ms-sm-auto px-md-0">
+                <!-- Topbar -->
+                <div class="navbar-top d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="mb-0 fw-semibold"><i class="bi bi-grid-3x3-gap-fill me-2 text-primary"></i>Visão Geral da Frota</h5>
+                    </div>
+                    <div class="d-flex align-items-center gap-3">
+                        <!-- Sino de notificações (agora clicável) -->
+                        <a href="#" class="position-relative text-secondary text-decoration-none">
+                            <i class="bi bi-bell fs-5"></i>
+                            {% if alerts %}
+                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                                    {{ alerts|length }}
+                                </span>
+                            {% endif %}
+                        </a>
+
+                        <div class="vr"></div>
+
+                        <!-- Dropdown do usuário -->
+                        <div class="dropdown">
+                            <a href="#" class="d-flex align-items-center text-decoration-none dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" style="color: inherit;">
+                                <img src="https://ui-avatars.com/api/?name={{ request.user.get_full_name|default:request.user.username }}&background=0d6efd&color=fff&size=40&bold=true" class="avatar-sm me-2" alt="avatar">
+                                <span class="d-none d-md-block">{{ request.user.get_full_name|default:request.user.username }}</span>
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" href="#"><i class="bi bi-person me-2"></i>Meu Perfil</a></li>
+                                <li><a class="dropdown-item" href="#"><i class="bi bi-gear me-2"></i>Configurações</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="{% url 'accounts:logout' %}"><i class="bi bi-box-arrow-right me-2"></i>Sair</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="main-content">
+                    <!-- Cards de resumo -->
+                    <div class="row g-4 mb-4">
+                        <div class="col-sm-6 col-xl-3">
+                            <div class="card card-stat p-3">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <span class="text-secondary text-uppercase small fw-semibold">Veículos ativos</span>
+                                        <h3 class="mt-2 mb-0 fw-bold">{{ total_vehicles }}</h3>
+                                        <small class="text-success"><i class="bi bi-arrow-up-short"></i> +2 este mês</small>
+                                    </div>
+                                    <div class="stat-icon"><i class="bi bi-truck"></i></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6 col-xl-3">
+                            <div class="card card-stat p-3">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <span class="text-secondary text-uppercase small fw-semibold">Motoristas disponíveis</span>
+                                        <h3 class="mt-2 mb-0 fw-bold">{{ available_drivers }}</h3>
+                                        <small class="text-warning"><i class="bi bi-dash-circle"></i> {{ drivers_in_trip }} em viagem</small>
+                                    </div>
+                                    <div class="stat-icon"><i class="bi bi-people"></i></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6 col-xl-3">
+                            <div class="card card-stat p-3">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <span class="text-secondary text-uppercase small fw-semibold">Km percorridos (mês)</span>
+                                        <h3 class="mt-2 mb-0 fw-bold">{{ month_km|floatformat:0 }}</h3>
+                                        <small class="text-secondary">↑ 8% vs mês anterior</small>
+                                    </div>
+                                    <div class="stat-icon"><i class="bi bi-speedometer"></i></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6 col-xl-3">
+                            <div class="card card-stat p-3">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <span class="text-secondary text-uppercase small fw-semibold">Custo médio/km</span>
+                                        <h3 class="mt-2 mb-0 fw-bold">R$ {{ avg_cost_per_km|floatformat:2 }}</h3>
+                                        <small class="text-success"><i class="bi bi-arrow-down-short"></i> -0,03</small>
+                                    </div>
+                                    <div class="stat-icon"><i class="bi bi-cash-coin"></i></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Gráficos e Mapa -->
+                    <div class="row g-4 mb-4">
+                        <div class="col-lg-7">
+                            <div class="card border-0 shadow-sm h-100">
+                                <div class="card-header bg-white border-0 pt-3 pb-0 d-flex justify-content-between">
+                                    <h5 class="fw-semibold"><i class="bi bi-graph-up-arrow me-2 text-primary"></i>Consumo de combustível (últimos 7 dias)</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="chart-container">
+                                        <canvas id="fuelConsumptionChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-5">
+                            <div class="card border-0 shadow-sm h-100">
+                                <div class="card-header bg-white border-0 pt-3 pb-0">
+                                    <h5 class="fw-semibold"><i class="bi bi-geo-alt-fill me-2 text-danger"></i>Localização dos veículos ativos</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div id="vehicleMap" class="map-container"></div>
+                                    <div class="mt-3 small text-secondary">
+                                        <i class="bi bi-circle-fill text-success me-1"></i> Em movimento · 
+                                        <i class="bi bi-circle-fill text-warning me-1"></i> Parado (motor ligado) · 
+                                        <i class="bi bi-circle-fill text-secondary me-1"></i> Estacionado
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tabela de frota + Alertas -->
+                    <div class="row g-4">
+                        <div class="col-lg-8">
+                            <div class="card border-0 shadow-sm">
+                                <div class="card-header bg-white border-0 pt-3 d-flex justify-content-between align-items-center">
+                                    <h5 class="fw-semibold mb-0"><i class="bi bi-table me-2 text-primary"></i>Status da Frota</h5>
+                                    <a href="{% url 'vehicles:list' %}" class="btn btn-sm btn-outline-primary">Ver todos <i class="bi bi-arrow-right"></i></a>
+                                </div>
+                                <div class="card-body p-0">
+                                    <div class="table-responsive">
+                                        <table class="table table-hover align-middle mb-0">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th>Veículo</th>
+                                                    <th>Placa</th>
+                                                    <th>Km atual</th>
+                                                    <th>Motorista</th>
+                                                    <th>Status</th>
+                                                    <th>Combustível</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for vehicle in vehicles %}
+                                                <tr>
+                                                    <td>
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="bg-light rounded-3 p-2 me-3"><i class="bi bi-truck-front fs-5 text-primary"></i></div>
+                                                            <span class="fw-medium">{{ vehicle.model }}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td><span class="badge bg-light text-dark">{{ vehicle.plate }}</span></td>
+                                                    <td>{{ vehicle.current_odometer }} km</td>
+                                                    <td>{{ vehicle.current_driver.user.get_full_name|default:"—" }}</td>
+                                                    <td>
+                                                        {% with last_trip=vehicle.trips.last %}
+                                                            {% if last_trip and not last_trip.end_time %}
+                                                                <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-1 rounded-pill"><i class="bi bi-truck me-1"></i>Em viagem</span>
+                                                            {% elif vehicle.is_active %}
+                                                                <span class="badge bg-success bg-opacity-10 text-success px-3 py-1 rounded-pill"><i class="bi bi-check-circle me-1"></i>Disponível</span>
+                                                            {% else %}
+                                                                <span class="badge bg-secondary">Inativo</span>
+                                                            {% endif %}
+                                                        {% endwith %}
+                                                    </td>
+                                                    <td>
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="progress flex-grow-1 me-2" style="height:6px; width:60px;">
+                                                                <div class="progress-bar bg-success" style="width: 70%"></div>
+                                                            </div>
+                                                            <small>70%</small>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                                {% empty %}
+                                                <tr><td colspan="6" class="text-center py-3">Nenhum veículo cadastrado.</td></tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-4">
+                            <div class="card border-0 shadow-sm">
+                                <div class="card-header bg-white border-0 pt-3">
+                                    <h5 class="fw-semibold"><i class="bi bi-exclamation-triangle-fill me-2 text-warning"></i>Alertas e Manutenções</h5>
+                                </div>
+                                <div class="card-body">
+                                    <ul class="list-group list-group-flush">
+                                        {% for alert in alerts %}
+                                        <li class="list-group-item d-flex px-0 border-bottom">
+                                            <div class="me-3 {% if alert.urgency == 'danger' %}text-danger{% elif alert.urgency == 'warning' %}text-warning{% else %}text-info{% endif %}">
+                                                <i class="bi bi-exclamation-circle-fill"></i>
+                                            </div>
+                                            <div>
+                                                <strong>
+                                                    {% if alert.type == 'maintenance' %}
+                                                        {{ alert.vehicle.model }} · {{ alert.vehicle.plate }}
+                                                    {% else %}
+                                                        {{ alert.driver.user.get_full_name }}
+                                                    {% endif %}
+                                                </strong>
+                                                <div class="small text-secondary">{{ alert.message }}</div>
+                                                {% if alert.urgency == 'danger' %}
+                                                    <span class="badge bg-danger bg-opacity-10 text-danger mt-1">Crítico</span>
+                                                {% elif alert.urgency == 'warning' %}
+                                                    <span class="badge bg-warning bg-opacity-10 text-warning mt-1">Urgente</span>
+                                                {% endif %}
+                                            </div>
+                                        </li>
+                                        {% empty %}
+                                        <li class="list-group-item text-center py-3 text-muted">Nenhum alerta no momento.</li>
+                                        {% endfor %}
+                                    </ul>
+                                    <div class="mt-3">
+                                        <a href="#" class="btn btn-outline-secondary w-100">Ver todos os alertas</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Rodapé -->
+                    <footer class="mt-5 footer-dash d-flex justify-content-between">
+                        <span>© {% now "Y" %} FleetISP · Todos os direitos reservados.</span>
+                        <span><i class="bi bi-database"></i> Última atualização: {% now "H:i" %}</span>
+                    </footer>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+    <!-- Dados para o JavaScript -->
+    {{ consumption_labels|json_script:"consumption-labels" }}
+    {{ consumption_data|json_script:"consumption-data" }}
+
+    <!-- Script inline da dashboard (gráfico + mapa) -->
+    <script>
+        (function() {
+            // ---------- GRÁFICO DE CONSUMO ----------
+            const labelsElem = document.getElementById('consumption-labels');
+            const dataElem = document.getElementById('consumption-data');
+            if (labelsElem && dataElem) {
+                const labels = JSON.parse(labelsElem.textContent);
+                const data = JSON.parse(dataElem.textContent);
+                const ctx = document.getElementById('fuelConsumptionChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Litros',
+                            data: data,
+                            borderColor: '#0d6efd',
+                            backgroundColor: 'rgba(13, 110, 253, 0.02)',
+                            borderWidth: 3,
+                            pointBackgroundColor: '#0d6efd',
+                            pointBorderColor: '#fff',
+                            pointRadius: 5,
+                            pointHoverRadius: 7,
+                            tension: 0.2,
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            y: { beginAtZero: true, grid: { color: '#e9ecef' }, title: { display: true, text: 'Litros' } },
+                            x: { grid: { display: false } }
+                        }
+                    }
+                });
+            }
+
+            // ---------- MAPA LEAFLET ----------
+            const mapDiv = document.getElementById('vehicleMap');
+            if (mapDiv) {
+                mapDiv.style.height = '220px';
+                mapDiv.style.width = '100%';
+                mapDiv.style.backgroundColor = '#e9e9e9';
+
+                const map = L.map('vehicleMap').setView([-23.5505, -46.6333], 10);
+                L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                }).addTo(map);
+
+                const mockLocations = [
+                    { plate: 'ABC-1234', driver: 'João M.', lat: -23.561, lng: -46.655, status: 'moving' },
+                    { plate: 'DEF-5678', driver: 'Ana P.', lat: -23.580, lng: -46.610, status: 'idle' }
+                ];
+                mockLocations.forEach(v => {
+                    let color = v.status === 'moving' ? '#28a745' : '#ffc107';
+                    const icon = L.divIcon({
+                        html: `<i class="bi bi-truck" style="font-size:1.8rem;color:${color};-webkit-text-stroke:1px white;"></i>`,
+                        className: 'custom-marker',
+                        iconSize: [30, 30],
+                        popupAnchor: [0, -15]
+                    });
+                    L.marker([v.lat, v.lng], { icon }).addTo(map)
+                        .bindPopup(`<b>${v.plate}</b><br>${v.driver}`);
+                });
+            }
+        })();
+    </script>
+</body>
+</html>

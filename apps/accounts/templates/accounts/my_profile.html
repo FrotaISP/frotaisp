@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% block title %}Meu Perfil{% endblock %}
+
+{% block content %}
+<div class="container py-4" style="max-width: 720px;">
+
+  <div class="mb-4">
+    <h1 class="h3 fw-bold"><i class="bi bi-person-circle text-primary me-2"></i>Meu Perfil</h1>
+    <p class="text-muted">Gerencie suas informações pessoais e senha de acesso.</p>
+  </div>
+
+  {% if messages %}
+    {% for msg in messages %}
+      <div class="alert alert-{{ msg.tags }} alert-dismissible fade show">
+        {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  <div class="row g-4">
+
+    <!-- Avatar + papel -->
+    <div class="col-md-4">
+      <div class="card shadow-sm text-center p-4">
+        <img src="https://ui-avatars.com/api/?name={{ request.user.get_full_name|default:request.user.username }}&background=0d6efd&color=fff&size=96&bold=true"
+             class="rounded-circle mx-auto mb-3" width="96" height="96" alt="avatar">
+        <h5 class="fw-bold mb-1">{{ request.user.get_full_name|default:request.user.username }}</h5>
+        <p class="text-muted small mb-2">@{{ request.user.username }}</p>
+        {% if user_profile %}
+          {% if user_profile.role == 'admin' %}
+            <span class="badge bg-danger">Administrador</span>
+          {% elif user_profile.role == 'manager' %}
+            <span class="badge bg-warning text-dark">Gestor</span>
+          {% elif user_profile.role == 'operator' %}
+            <span class="badge bg-info text-dark">Operador</span>
+          {% elif user_profile.role == 'driver' %}
+            <span class="badge bg-success">Motorista</span>
+          {% else %}
+            <span class="badge bg-secondary">Visualizador</span>
+          {% endif %}
+        {% endif %}
+        <hr>
+        <p class="text-muted small mb-1"><i class="bi bi-envelope me-1"></i>{{ request.user.email|default:"—" }}</p>
+        {% if user_profile.phone %}
+          <p class="text-muted small mb-0"><i class="bi bi-telephone me-1"></i>{{ user_profile.phone }}</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Formulários -->
+    <div class="col-md-8">
+
+      <!-- Dados pessoais -->
+      <div class="card shadow-sm mb-4">
+        <div class="card-header fw-semibold bg-white border-bottom">
+          <i class="bi bi-pencil-square me-2 text-primary"></i>Dados Pessoais
+        </div>
+        <div class="card-body p-4">
+          <form method="post" novalidate>
+            {% csrf_token %}
+            <input type="hidden" name="action" value="update_profile">
+
+            {% if profile_form.non_field_errors %}
+              <div class="alert alert-danger">{{ profile_form.non_field_errors }}</div>
+            {% endif %}
+
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Nome</label>
+                {{ profile_form.first_name }}
+                {% if profile_form.first_name.errors %}<div class="text-danger small">{{ profile_form.first_name.errors|join:", " }}</div>{% endif %}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Sobrenome</label>
+                {{ profile_form.last_name }}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">E-mail</label>
+                {{ profile_form.email }}
+                {% if profile_form.email.errors %}<div class="text-danger small">{{ profile_form.email.errors|join:", " }}</div>{% endif %}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Telefone</label>
+                {{ profile_form.phone }}
+              </div>
+            </div>
+
+            <div class="mt-3">
+              <button type="submit" class="btn btn-primary px-4">
+                <i class="bi bi-check-lg me-1"></i>Salvar Dados
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Alterar senha -->
+      <div class="card shadow-sm">
+        <div class="card-header fw-semibold bg-white border-bottom">
+          <i class="bi bi-shield-lock me-2 text-warning"></i>Alterar Senha
+        </div>
+        <div class="card-body p-4">
+          <form method="post" novalidate>
+            {% csrf_token %}
+            <input type="hidden" name="action" value="change_password">
+
+            {% if password_form.non_field_errors %}
+              <div class="alert alert-danger">{{ password_form.non_field_errors }}</div>
+            {% endif %}
+
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Senha Atual</label>
+              <input type="password" name="old_password" class="form-control {% if password_form.old_password.errors %}is-invalid{% endif %}" placeholder="••••••••">
+              {% if password_form.old_password.errors %}<div class="invalid-feedback">{{ password_form.old_password.errors|join:", " }}</div>{% endif %}
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Nova Senha</label>
+              <input type="password" name="new_password1" class="form-control {% if password_form.new_password1.errors %}is-invalid{% endif %}" placeholder="••••••••">
+              {% if password_form.new_password1.errors %}<div class="invalid-feedback">{{ password_form.new_password1.errors|join:", " }}</div>{% endif %}
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Confirmar Nova Senha</label>
+              <input type="password" name="new_password2" class="form-control {% if password_form.new_password2.errors %}is-invalid{% endif %}" placeholder="••••••••">
+              {% if password_form.new_password2.errors %}<div class="invalid-feedback">{{ password_form.new_password2.errors|join:", " }}</div>{% endif %}
+            </div>
+
+            <button type="submit" class="btn btn-warning px-4">
+              <i class="bi bi-key me-1"></i>Alterar Senha
+            </button>
+          </form>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}

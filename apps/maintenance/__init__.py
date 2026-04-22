@@ -1,0 +1,1 @@
+# apps/maintenance/__init__.py

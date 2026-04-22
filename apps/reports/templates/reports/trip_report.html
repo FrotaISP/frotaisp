@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Relatório de Viagens</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 2cm; }
+        h1 { color: #198754; border-bottom: 2px solid #198754; }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #f2f2f2; padding: 8px; }
+        td { padding: 8px; border-bottom: 1px solid #ddd; }
+        .summary { background: #f8f9fa; padding: 15px; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <h1>Relatório de Viagens / Ordens de Serviço</h1>
+    <p><strong>Período:</strong> {{ summary.start_date|date:"d/m/Y" }} a {{ summary.end_date|date:"d/m/Y" }}</p>
+    
+    <div class="summary">
+        <p><strong>Total de viagens:</strong> {{ summary.total_trips }}</p>
+        <p><strong>Quilometragem total percorrida:</strong> {{ summary.total_km }} km</p>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Data Início</th>
+                <th>Veículo</th>
+                <th>Motorista</th>
+                <th>Destino</th>
+                <th>Km Inicial</th>
+                <th>Km Final</th>
+                <th>Distância</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for trip in summary.trips %}
+            <tr>
+                <td>{{ trip.start_time|date:"d/m/Y H:i" }}</td>
+                <td>{{ trip.vehicle.plate }}</td>
+                <td>{{ trip.driver.user.get_full_name }}</td>
+                <td>{{ trip.destination }}</td>
+                <td>{{ trip.start_odometer }}</td>
+                <td>{{ trip.end_odometer|default:"—" }}</td>
+                <td>{{ trip.distance }} km</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7">Nenhuma viagem no período.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <div class="footer" style="margin-top: 30px; font-size: 12px;">
+        Relatório gerado em {{ generated_at|date:"d/m/Y H:i" }}
+    </div>
+</body>
+</html>
