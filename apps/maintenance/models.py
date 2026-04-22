@@ -2,6 +2,7 @@
 from django.db import models
 from apps.core.models import TimeStampedModel
 
+
 class Maintenance(TimeStampedModel):
     MAINTENANCE_TYPES = [
         ('P', 'Preventiva'),
@@ -32,3 +33,10 @@ class Maintenance(TimeStampedModel):
 
     def __str__(self):
         return f"{self.vehicle.plate} - {self.get_type_display()} - {self.date}"
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+
+        if self.odometer > self.vehicle.current_odometer:
+            self.vehicle.current_odometer = self.odometer
+            self.vehicle.save(update_fields=['current_odometer', 'updated_at'])
