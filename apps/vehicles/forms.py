@@ -4,17 +4,13 @@ from django.utils import timezone
 from apps.core.mixins import scope_related_queryset_for_user
 from apps.core.uploads import ALLOWED_DOCUMENT_TYPES, ALLOWED_IMAGE_TYPES, validate_uploaded_file
 from apps.drivers.models import Driver
-from .models import Vehicle, VehicleChecklist, VehicleDocument
+from .models import Tire, TireEvent, Vehicle, VehicleChecklist, VehicleDocument
 
 
 class VehicleForm(forms.ModelForm):
     class Meta:
         model = Vehicle
-        fields = [
-            'plate', 'brand', 'model', 'year', 'chassis',
-            'fuel_type', 'capacity_kg', 'current_odometer',
-            'is_active', 'image', 'current_driver'
-        ]
+        fields = ['plate', 'brand', 'model', 'year', 'chassis', 'fuel_type', 'capacity_kg', 'current_odometer', 'is_active', 'image', 'current_driver']
         widgets = {
             'plate': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: ABC-1234'}),
             'brand': forms.TextInput(attrs={'class': 'form-control'}),
@@ -33,9 +29,7 @@ class VehicleForm(forms.ModelForm):
         self.company = company or getattr(self.instance, 'company', None)
         self.user = user
         if user:
-            self.fields['current_driver'].queryset = scope_related_queryset_for_user(
-                Driver.objects.select_related('user'), user
-            )
+            self.fields['current_driver'].queryset = scope_related_queryset_for_user(Driver.objects.select_related('user'), user)
 
     def clean_plate(self):
         plate = self.cleaned_data['plate'].upper().strip()
@@ -57,11 +51,7 @@ class VehicleForm(forms.ModelForm):
         if self.instance and self.instance.pk:
             current = Vehicle.objects.values_list('current_odometer', flat=True).get(pk=self.instance.pk)
             if new_km is not None and new_km < current:
-                raise forms.ValidationError(
-                    f'O hodometro nao pode ser reduzido. '
-                    f'Valor atual registrado: {current:,} km. '
-                    f'Valor informado: {new_km:,} km.'
-                )
+                raise forms.ValidationError(f'O hodometro nao pode ser reduzido. Valor atual registrado: {current:,} km. Valor informado: {new_km:,} km.')
         return new_km
 
     def save(self, commit=True):
@@ -77,10 +67,7 @@ class VehicleForm(forms.ModelForm):
 class VehicleDocumentForm(forms.ModelForm):
     class Meta:
         model = VehicleDocument
-        fields = [
-            'vehicle', 'driver', 'document_type', 'title', 'number',
-            'issue_date', 'expiration_date', 'file', 'notes', 'is_active'
-        ]
+        fields = ['vehicle', 'driver', 'document_type', 'title', 'number', 'issue_date', 'expiration_date', 'file', 'notes', 'is_active']
         widgets = {
             'vehicle': forms.Select(attrs={'class': 'form-select'}),
             'driver': forms.Select(attrs={'class': 'form-select'}),
@@ -107,7 +94,6 @@ class VehicleDocumentForm(forms.ModelForm):
         driver = cleaned.get('driver')
         issue_date = cleaned.get('issue_date')
         expiration_date = cleaned.get('expiration_date')
-
         if not vehicle and not driver:
             raise forms.ValidationError('Informe um veiculo ou motorista para vincular o documento.')
         if vehicle and self.company and vehicle.company_id != self.company.id:
@@ -139,11 +125,7 @@ class VehicleDocumentForm(forms.ModelForm):
 class VehicleChecklistForm(forms.ModelForm):
     class Meta:
         model = VehicleChecklist
-        fields = [
-            'vehicle', 'driver', 'inspected_at', 'odometer', 'tires_ok', 'oil_ok',
-            'brakes_ok', 'lights_ok', 'safety_items_ok', 'cleanliness_ok',
-            'status', 'notes', 'photo'
-        ]
+        fields = ['vehicle', 'driver', 'inspected_at', 'odometer', 'tires_ok', 'oil_ok', 'brakes_ok', 'lights_ok', 'safety_items_ok', 'cleanliness_ok', 'status', 'notes', 'photo']
         widgets = {
             'vehicle': forms.Select(attrs={'class': 'form-select'}),
             'driver': forms.Select(attrs={'class': 'form-select'}),
@@ -195,3 +177,94 @@ class VehicleChecklistForm(forms.ModelForm):
             checklist.save()
             self.save_m2m()
         return checklist
+
+
+class TireForm(forms.ModelForm):
+    class Meta:
+        model = Tire
+        fields = ['code', 'brand', 'model', 'size', 'purchase_date', 'purchase_cost', 'initial_tread_mm', 'current_tread_mm', 'current_vehicle', 'position', 'installed_odometer', 'status', 'notes']
+        widgets = {
+            'code': forms.TextInput(attrs={'class': 'form-control'}),
+            'brand': forms.TextInput(attrs={'class': 'form-control'}),
+            'model': forms.TextInput(attrs={'class': 'form-control'}),
+            'size': forms.TextInput(attrs={'class': 'form-control'}),
+            'purchase_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'purchase_cost': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'initial_tread_mm': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'current_tread_mm': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'current_vehicle': forms.Select(attrs={'class': 'form-select'}),
+            'position': forms.TextInput(attrs={'class': 'form-control'}),
+            'installed_odometer': forms.NumberInput(attrs={'class': 'form-control'}),
+            'status': forms.Select(attrs={'class': 'form-select'}),
+            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        }
+
+    def __init__(self, *args, company=None, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.company = company or getattr(self.instance, 'company', None)
+        if user:
+            self.fields['current_vehicle'].queryset = scope_related_queryset_for_user(Vehicle.objects.filter(is_active=True), user)
+
+    def clean_code(self):
+        code = self.cleaned_data['code'].strip().upper()
+        qs = Tire.objects.filter(code=code).exclude(pk=self.instance.pk)
+        if self.company:
+            qs = qs.filter(company=self.company)
+        if qs.exists():
+            raise forms.ValidationError('Este codigo de pneu ja esta cadastrado para esta empresa.')
+        return code
+
+    def save(self, commit=True):
+        tire = super().save(commit=False)
+        if self.company and not tire.company_id:
+            tire.company = self.company
+        if commit:
+            tire.save()
+            self.save_m2m()
+        return tire
+
+
+class TireEventForm(forms.ModelForm):
+    class Meta:
+        model = TireEvent
+        fields = ['tire', 'vehicle', 'event_type', 'date', 'odometer', 'position', 'tread_mm', 'cost', 'notes']
+        widgets = {
+            'tire': forms.Select(attrs={'class': 'form-select'}),
+            'vehicle': forms.Select(attrs={'class': 'form-select'}),
+            'event_type': forms.Select(attrs={'class': 'form-select'}),
+            'date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'odometer': forms.NumberInput(attrs={'class': 'form-control'}),
+            'position': forms.TextInput(attrs={'class': 'form-control'}),
+            'tread_mm': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'cost': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        }
+
+    def __init__(self, *args, company=None, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.company = company or getattr(self.instance, 'company', None)
+        if user:
+            self.fields['tire'].queryset = scope_related_queryset_for_user(Tire.objects.all(), user)
+            self.fields['vehicle'].queryset = scope_related_queryset_for_user(Vehicle.objects.filter(is_active=True), user)
+
+    def clean(self):
+        cleaned = super().clean()
+        tire = cleaned.get('tire')
+        vehicle = cleaned.get('vehicle')
+        event_type = cleaned.get('event_type')
+        if tire and self.company and tire.company_id != self.company.id:
+            self.add_error('tire', 'Selecione um pneu da sua empresa.')
+        if vehicle and self.company and vehicle.company_id != self.company.id:
+            self.add_error('vehicle', 'Selecione um veiculo da sua empresa.')
+        if event_type in ('install', 'rotation') and not vehicle:
+            self.add_error('vehicle', 'Informe o veiculo para instalacao ou rodizio.')
+        return cleaned
+
+    def save(self, commit=True):
+        event = super().save(commit=False)
+        if self.company and not event.company_id:
+            event.company = self.company
+        if commit:
+            event.save()
+            self.save_m2m()
+        return event
