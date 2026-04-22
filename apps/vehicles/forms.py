@@ -10,7 +10,11 @@ from .models import Tire, TireEvent, Vehicle, VehicleChecklist, VehicleDocument
 class VehicleForm(forms.ModelForm):
     class Meta:
         model = Vehicle
-        fields = ['plate', 'brand', 'model', 'year', 'chassis', 'fuel_type', 'capacity_kg', 'current_odometer', 'is_active', 'image', 'current_driver']
+        fields = [
+            'plate', 'brand', 'model', 'year', 'chassis', 'fuel_type', 'capacity_kg',
+            'current_odometer', 'is_active', 'image', 'current_driver',
+            'latitude', 'longitude', 'last_location_at', 'last_speed_kmh', 'heading_degrees', 'location_source'
+        ]
         widgets = {
             'plate': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: ABC-1234'}),
             'brand': forms.TextInput(attrs={'class': 'form-control'}),
@@ -22,6 +26,12 @@ class VehicleForm(forms.ModelForm):
             'current_odometer': forms.NumberInput(attrs={'class': 'form-control', 'min': '0'}),
             'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'current_driver': forms.Select(attrs={'class': 'form-select'}),
+            'latitude': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.000001', 'placeholder': '-23.550520'}),
+            'longitude': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.000001', 'placeholder': '-46.633308'}),
+            'last_location_at': forms.DateTimeInput(attrs={'class': 'form-control', 'type': 'datetime-local'}),
+            'last_speed_kmh': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'min': '0'}),
+            'heading_degrees': forms.NumberInput(attrs={'class': 'form-control', 'min': '0', 'max': '359'}),
+            'location_source': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Manual, GPS, API, etc.'}),
         }
 
     def __init__(self, *args, company=None, user=None, **kwargs):
@@ -54,10 +64,27 @@ class VehicleForm(forms.ModelForm):
                 raise forms.ValidationError(f'O hodometro nao pode ser reduzido. Valor atual registrado: {current:,} km. Valor informado: {new_km:,} km.')
         return new_km
 
+    def clean(self):
+        cleaned = super().clean()
+        latitude = cleaned.get('latitude')
+        longitude = cleaned.get('longitude')
+        heading = cleaned.get('heading_degrees')
+        if (latitude is None) != (longitude is None):
+            raise forms.ValidationError('Informe latitude e longitude juntas para exibir o veiculo no mapa.')
+        if latitude is not None and not (-90 <= latitude <= 90):
+            self.add_error('latitude', 'Latitude deve estar entre -90 e 90.')
+        if longitude is not None and not (-180 <= longitude <= 180):
+            self.add_error('longitude', 'Longitude deve estar entre -180 e 180.')
+        if heading is not None and heading > 359:
+            self.add_error('heading_degrees', 'Direcao deve estar entre 0 e 359 graus.')
+        return cleaned
+
     def save(self, commit=True):
         vehicle = super().save(commit=False)
         if self.company and not vehicle.company_id:
             vehicle.company = self.company
+        if vehicle.latitude is not None and vehicle.longitude is not None and not vehicle.last_location_at:
+            vehicle.last_location_at = timezone.now()
         if commit:
             vehicle.save()
             self.save_m2m()
