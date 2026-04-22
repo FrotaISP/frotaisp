@@ -3,27 +3,23 @@ import io
 from datetime import date, timedelta
 
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.db.models import Sum, Count, Avg, Q
+from django.db.models import Sum, Count, Avg
 from django.http import HttpResponse
-from django.views.generic import TemplateView, View
+from django.template.loader import render_to_string
 from django.utils.timezone import now
+from django.views.generic import TemplateView, View
 
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment
 from weasyprint import HTML
-from django.template.loader import render_to_string
 
+from apps.core.mixins import scope_queryset_for_user
 from apps.fuel.models import FuelRecord
 from apps.trips.models import Trip
 from apps.maintenance.models import Maintenance
 
 
-# ─────────────────────────────────────────────────────────────
-# Helpers
-# ─────────────────────────────────────────────────────────────
-
 def _date_range_from_request(request):
-    """Retorna (date_from, date_to) a partir dos GET params, com fallback de 30 dias."""
     today = date.today()
     date_from_str = request.GET.get('date_from')
     date_to_str = request.GET.get('date_to')
@@ -52,9 +48,42 @@ def _apply_header(ws, headers):
         cell.alignment = align
 
 
-# ─────────────────────────────────────────────────────────────
-# Painel de Relatórios
-# ─────────────────────────────────────────────────────────────
+def _autosize(ws):
+    for col in ws.columns:
+        ws.column_dimensions[col[0].column_letter].width = max(len(str(c.value or '')) for c in col) + 4
+
+
+def _workbook_response(wb, filename):
+    buffer = io.BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+    response = HttpResponse(
+        buffer.getvalue(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    )
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+
+
+def _pdf_response(request, template, context, filename):
+    html_string = render_to_string(template, context)
+    pdf_file = HTML(string=html_string, base_url=request.build_absolute_uri()).write_pdf()
+    response = HttpResponse(pdf_file, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+
+
+def _fuel_queryset(request):
+    return scope_queryset_for_user(FuelRecord.objects.all(), request.user).select_related('vehicle')
+
+
+def _trip_queryset(request):
+    return scope_queryset_for_user(Trip.objects.all(), request.user).select_related('vehicle', 'driver', 'driver__user')
+
+
+def _maintenance_queryset(request):
+    return scope_queryset_for_user(Maintenance.objects.all(), request.user).select_related('vehicle')
+
 
 class ReportsDashboardView(LoginRequiredMixin, TemplateView):
     template_name = 'reports/dashboard.html'
@@ -63,23 +92,12 @@ class ReportsDashboardView(LoginRequiredMixin, TemplateView):
         ctx = super().get_context_data(**kwargs)
         today = date.today()
         month_start = today.replace(day=1)
-
-        ctx['fuel_month_total'] = (
-            FuelRecord.objects.filter(date__gte=month_start)
-            .aggregate(total=Sum('total_cost'))['total'] or 0
-        )
-        ctx['trips_month_count'] = Trip.objects.filter(start_time__date__gte=month_start).count()
-        ctx['maintenance_month_cost'] = (
-            Maintenance.objects.filter(date__gte=month_start)
-            .aggregate(total=Sum('cost'))['total'] or 0
-        )
+        ctx['fuel_month_total'] = _fuel_queryset(self.request).filter(date__gte=month_start).aggregate(total=Sum('total_cost'))['total'] or 0
+        ctx['trips_month_count'] = _trip_queryset(self.request).filter(start_time__date__gte=month_start).count()
+        ctx['maintenance_month_cost'] = _maintenance_queryset(self.request).filter(date__gte=month_start).aggregate(total=Sum('cost'))['total'] or 0
         ctx['today'] = today
         return ctx
 
-
-# ─────────────────────────────────────────────────────────────
-# COMBUSTÍVEL
-# ─────────────────────────────────────────────────────────────
 
 class FuelReportView(LoginRequiredMixin, TemplateView):
     template_name = 'reports/fuel_report.html'
@@ -88,18 +106,10 @@ class FuelReportView(LoginRequiredMixin, TemplateView):
         ctx = super().get_context_data(**kwargs)
         date_from, date_to = _date_range_from_request(self.request)
         vehicle_id = self.request.GET.get('vehicle')
-
-        qs = FuelRecord.objects.filter(date__range=(date_from, date_to)).select_related('vehicle')
+        qs = _fuel_queryset(self.request).filter(date__range=(date_from, date_to))
         if vehicle_id:
             qs = qs.filter(vehicle_id=vehicle_id)
-
-        agg = qs.aggregate(
-            total_cost=Sum('total_cost'),
-            total_liters=Sum('liters'),
-            avg_price=Avg('price_per_liter'),
-            count=Count('id'),
-        )
-
+        agg = qs.aggregate(total_cost=Sum('total_cost'), total_liters=Sum('liters'), avg_price=Avg('price_per_liter'), count=Count('id'))
         ctx.update({
             'records': qs.order_by('-date'),
             'date_from': date_from,
@@ -117,19 +127,11 @@ class FuelReportPDFView(LoginRequiredMixin, View):
     def get(self, request):
         date_from, date_to = _date_range_from_request(request)
         vehicle_id = request.GET.get('vehicle')
-
-        qs = FuelRecord.objects.filter(date__range=(date_from, date_to)).select_related('vehicle')
+        qs = _fuel_queryset(request).filter(date__range=(date_from, date_to))
         if vehicle_id:
             qs = qs.filter(vehicle_id=vehicle_id)
-
-        agg = qs.aggregate(
-            total_cost=Sum('total_cost'),
-            total_liters=Sum('liters'),
-            avg_price=Avg('price_per_liter'),
-            count=Count('id'),
-        )
-
-        html_string = render_to_string('reports/pdf/fuel_pdf.html', {
+        agg = qs.aggregate(total_cost=Sum('total_cost'), total_liters=Sum('liters'), avg_price=Avg('price_per_liter'), count=Count('id'))
+        return _pdf_response(request, 'reports/pdf/fuel_pdf.html', {
             'records': qs.order_by('-date'),
             'date_from': date_from,
             'date_to': date_to,
@@ -138,70 +140,29 @@ class FuelReportPDFView(LoginRequiredMixin, View):
             'avg_price': agg['avg_price'] or 0,
             'count': agg['count'],
             'generated_at': now(),
-        })
-        pdf_file = HTML(string=html_string, base_url=request.build_absolute_uri()).write_pdf()
-        response = HttpResponse(pdf_file, content_type='application/pdf')
-        filename = f'relatorio_combustivel_{date_from}_{date_to}.pdf'
-        response['Content-Disposition'] = f'attachment; filename="{filename}"'
-        return response
+        }, f'relatorio_combustivel_{date_from}_{date_to}.pdf')
 
 
 class FuelReportExcelView(LoginRequiredMixin, View):
     def get(self, request):
         date_from, date_to = _date_range_from_request(request)
         vehicle_id = request.GET.get('vehicle')
-
-        qs = FuelRecord.objects.filter(date__range=(date_from, date_to)).select_related('vehicle')
+        qs = _fuel_queryset(request).filter(date__range=(date_from, date_to))
         if vehicle_id:
             qs = qs.filter(vehicle_id=vehicle_id)
-
         wb = openpyxl.Workbook()
         ws = wb.active
-        ws.title = 'Combustível'
-
-        headers = ['Data', 'Veículo', 'Placa', 'Litros', 'Preço/L (R$)', 'Total (R$)', 'Km', 'Posto']
-        _apply_header(ws, headers)
-
+        ws.title = 'Combustivel'
+        _apply_header(ws, ['Data', 'Veiculo', 'Placa', 'Litros', 'Preco/L (R$)', 'Total (R$)', 'Km', 'Posto'])
         for r in qs.order_by('-date'):
-            ws.append([
-                r.date.strftime('%d/%m/%Y'),
-                str(r.vehicle),
-                r.vehicle.plate,
-                float(r.liters),
-                float(r.price_per_liter),
-                float(r.total_cost),
-                r.odometer,
-                r.gas_station,
-            ])
-
-        # Totais
+            ws.append([r.date.strftime('%d/%m/%Y'), str(r.vehicle), r.vehicle.plate, float(r.liters), float(r.price_per_liter), float(r.total_cost), r.odometer, r.gas_station])
         ws.append([])
-        total_row = ws.max_row + 1
         ws.append(['', '', 'TOTAL', '', '', f'=SUM(F2:F{ws.max_row - 1})', '', ''])
         for cell in ws[ws.max_row]:
             cell.font = Font(bold=True)
+        _autosize(ws)
+        return _workbook_response(wb, f'relatorio_combustivel_{date_from}_{date_to}.xlsx')
 
-        # Auto-width
-        for col in ws.columns:
-            max_len = max(len(str(c.value or '')) for c in col)
-            ws.column_dimensions[col[0].column_letter].width = max_len + 4
-
-        buffer = io.BytesIO()
-        wb.save(buffer)
-        buffer.seek(0)
-
-        response = HttpResponse(
-            buffer.getvalue(),
-            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        )
-        filename = f'relatorio_combustivel_{date_from}_{date_to}.xlsx'
-        response['Content-Disposition'] = f'attachment; filename="{filename}"'
-        return response
-
-
-# ─────────────────────────────────────────────────────────────
-# VIAGENS
-# ─────────────────────────────────────────────────────────────
 
 class TripReportView(LoginRequiredMixin, TemplateView):
     template_name = 'reports/trip_report.html'
@@ -211,25 +172,17 @@ class TripReportView(LoginRequiredMixin, TemplateView):
         date_from, date_to = _date_range_from_request(self.request)
         driver_id = self.request.GET.get('driver')
         vehicle_id = self.request.GET.get('vehicle')
-
-        qs = Trip.objects.filter(
-            start_time__date__range=(date_from, date_to)
-        ).select_related('vehicle', 'driver', 'driver__user')
-
+        qs = _trip_queryset(self.request).filter(start_time__date__range=(date_from, date_to))
         if driver_id:
             qs = qs.filter(driver_id=driver_id)
         if vehicle_id:
             qs = qs.filter(vehicle_id=vehicle_id)
-
-        total_distance = sum(t.distance() for t in qs)
-        count = qs.count()
-
         ctx.update({
             'trips': qs.order_by('-start_time'),
             'date_from': date_from,
             'date_to': date_to,
-            'total_distance': total_distance,
-            'count': count,
+            'total_distance': sum(t.distance() for t in qs),
+            'count': qs.count(),
             'driver_id': driver_id,
             'vehicle_id': vehicle_id,
         })
@@ -241,30 +194,19 @@ class TripReportPDFView(LoginRequiredMixin, View):
         date_from, date_to = _date_range_from_request(request)
         driver_id = request.GET.get('driver')
         vehicle_id = request.GET.get('vehicle')
-
-        qs = Trip.objects.filter(
-            start_time__date__range=(date_from, date_to)
-        ).select_related('vehicle', 'driver', 'driver__user')
+        qs = _trip_queryset(request).filter(start_time__date__range=(date_from, date_to))
         if driver_id:
             qs = qs.filter(driver_id=driver_id)
         if vehicle_id:
             qs = qs.filter(vehicle_id=vehicle_id)
-
-        total_distance = sum(t.distance() for t in qs)
-
-        html_string = render_to_string('reports/pdf/trips_pdf.html', {
+        return _pdf_response(request, 'reports/pdf/trips_pdf.html', {
             'trips': qs.order_by('-start_time'),
             'date_from': date_from,
             'date_to': date_to,
-            'total_distance': total_distance,
+            'total_distance': sum(t.distance() for t in qs),
             'count': qs.count(),
             'generated_at': now(),
-        })
-        pdf_file = HTML(string=html_string, base_url=request.build_absolute_uri()).write_pdf()
-        response = HttpResponse(pdf_file, content_type='application/pdf')
-        filename = f'relatorio_viagens_{date_from}_{date_to}.pdf'
-        response['Content-Disposition'] = f'attachment; filename="{filename}"'
-        return response
+        }, f'relatorio_viagens_{date_from}_{date_to}.pdf')
 
 
 class TripReportExcelView(LoginRequiredMixin, View):
@@ -272,57 +214,20 @@ class TripReportExcelView(LoginRequiredMixin, View):
         date_from, date_to = _date_range_from_request(request)
         driver_id = request.GET.get('driver')
         vehicle_id = request.GET.get('vehicle')
-
-        qs = Trip.objects.filter(
-            start_time__date__range=(date_from, date_to)
-        ).select_related('vehicle', 'driver', 'driver__user')
+        qs = _trip_queryset(request).filter(start_time__date__range=(date_from, date_to))
         if driver_id:
             qs = qs.filter(driver_id=driver_id)
         if vehicle_id:
             qs = qs.filter(vehicle_id=vehicle_id)
-
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.title = 'Viagens'
-
-        headers = ['Início', 'Fim', 'Veículo', 'Placa', 'Motorista', 'Destino', 'Propósito', 'Km Inicial', 'Km Final', 'Distância (km)', 'Nº OS']
-        _apply_header(ws, headers)
-
+        _apply_header(ws, ['Inicio', 'Fim', 'Veiculo', 'Placa', 'Motorista', 'Destino', 'Proposito', 'Km Inicial', 'Km Final', 'Distancia (km)', 'No OS'])
         for t in qs.order_by('-start_time'):
-            ws.append([
-                t.start_time.strftime('%d/%m/%Y %H:%M'),
-                t.end_time.strftime('%d/%m/%Y %H:%M') if t.end_time else '—',
-                str(t.vehicle),
-                t.vehicle.plate,
-                str(t.driver),
-                t.destination,
-                t.purpose,
-                t.start_odometer,
-                t.end_odometer or '—',
-                t.distance(),
-                t.service_order or '—',
-            ])
+            ws.append([t.start_time.strftime('%d/%m/%Y %H:%M'), t.end_time.strftime('%d/%m/%Y %H:%M') if t.end_time else '-', str(t.vehicle), t.vehicle.plate, str(t.driver), t.destination, t.purpose, t.start_odometer, t.end_odometer or '-', t.distance(), t.service_order or '-'])
+        _autosize(ws)
+        return _workbook_response(wb, f'relatorio_viagens_{date_from}_{date_to}.xlsx')
 
-        for col in ws.columns:
-            max_len = max(len(str(c.value or '')) for c in col)
-            ws.column_dimensions[col[0].column_letter].width = max_len + 4
-
-        buffer = io.BytesIO()
-        wb.save(buffer)
-        buffer.seek(0)
-
-        response = HttpResponse(
-            buffer.getvalue(),
-            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        )
-        filename = f'relatorio_viagens_{date_from}_{date_to}.xlsx'
-        response['Content-Disposition'] = f'attachment; filename="{filename}"'
-        return response
-
-
-# ─────────────────────────────────────────────────────────────
-# MANUTENÇÃO
-# ─────────────────────────────────────────────────────────────
 
 class MaintenanceReportView(LoginRequiredMixin, TemplateView):
     template_name = 'reports/maintenance_report.html'
@@ -332,15 +237,12 @@ class MaintenanceReportView(LoginRequiredMixin, TemplateView):
         date_from, date_to = _date_range_from_request(self.request)
         vehicle_id = self.request.GET.get('vehicle')
         mtype = self.request.GET.get('type')
-
-        qs = Maintenance.objects.filter(date__range=(date_from, date_to)).select_related('vehicle')
+        qs = _maintenance_queryset(self.request).filter(date__range=(date_from, date_to))
         if vehicle_id:
             qs = qs.filter(vehicle_id=vehicle_id)
         if mtype:
             qs = qs.filter(type=mtype)
-
         agg = qs.aggregate(total_cost=Sum('cost'), count=Count('id'))
-
         ctx.update({
             'records': qs.order_by('-date'),
             'date_from': date_from,
@@ -359,28 +261,20 @@ class MaintenanceReportPDFView(LoginRequiredMixin, View):
         date_from, date_to = _date_range_from_request(request)
         vehicle_id = request.GET.get('vehicle')
         mtype = request.GET.get('type')
-
-        qs = Maintenance.objects.filter(date__range=(date_from, date_to)).select_related('vehicle')
+        qs = _maintenance_queryset(request).filter(date__range=(date_from, date_to))
         if vehicle_id:
             qs = qs.filter(vehicle_id=vehicle_id)
         if mtype:
             qs = qs.filter(type=mtype)
-
         agg = qs.aggregate(total_cost=Sum('cost'), count=Count('id'))
-
-        html_string = render_to_string('reports/pdf/maintenance_pdf.html', {
+        return _pdf_response(request, 'reports/pdf/maintenance_pdf.html', {
             'records': qs.order_by('-date'),
             'date_from': date_from,
             'date_to': date_to,
             'total_cost': agg['total_cost'] or 0,
             'count': agg['count'],
             'generated_at': now(),
-        })
-        pdf_file = HTML(string=html_string, base_url=request.build_absolute_uri()).write_pdf()
-        response = HttpResponse(pdf_file, content_type='application/pdf')
-        filename = f'relatorio_manutencao_{date_from}_{date_to}.pdf'
-        response['Content-Disposition'] = f'attachment; filename="{filename}"'
-        return response
+        }, f'relatorio_manutencao_{date_from}_{date_to}.pdf')
 
 
 class MaintenanceReportExcelView(LoginRequiredMixin, View):
@@ -388,59 +282,24 @@ class MaintenanceReportExcelView(LoginRequiredMixin, View):
         date_from, date_to = _date_range_from_request(request)
         vehicle_id = request.GET.get('vehicle')
         mtype = request.GET.get('type')
-
-        qs = Maintenance.objects.filter(date__range=(date_from, date_to)).select_related('vehicle')
+        qs = _maintenance_queryset(request).filter(date__range=(date_from, date_to))
         if vehicle_id:
             qs = qs.filter(vehicle_id=vehicle_id)
         if mtype:
             qs = qs.filter(type=mtype)
-
         wb = openpyxl.Workbook()
         ws = wb.active
-        ws.title = 'Manutenções'
-
-        headers = ['Data', 'Veículo', 'Placa', 'Tipo', 'Descrição', 'Oficina', 'Km', 'Custo (R$)', 'Prox. Alerta (km)', 'Prox. Alerta (data)']
-        _apply_header(ws, headers)
-
+        ws.title = 'Manutencoes'
+        _apply_header(ws, ['Data', 'Veiculo', 'Placa', 'Tipo', 'Descricao', 'Oficina', 'Km', 'Custo (R$)', 'Prox. Alerta (km)', 'Prox. Alerta (data)'])
         for m in qs.order_by('-date'):
-            ws.append([
-                m.date.strftime('%d/%m/%Y'),
-                str(m.vehicle),
-                m.vehicle.plate,
-                m.get_type_display(),
-                m.description,
-                m.workshop,
-                m.odometer,
-                float(m.cost),
-                m.next_alert_km or '—',
-                m.next_alert_date.strftime('%d/%m/%Y') if m.next_alert_date else '—',
-            ])
-
+            ws.append([m.date.strftime('%d/%m/%Y'), str(m.vehicle), m.vehicle.plate, m.get_type_display(), m.description, m.workshop, m.odometer, float(m.cost), m.next_alert_km or '-', m.next_alert_date.strftime('%d/%m/%Y') if m.next_alert_date else '-'])
         ws.append([])
         ws.append(['', '', '', '', '', 'TOTAL', '', f'=SUM(H2:H{ws.max_row - 1})', '', ''])
         for cell in ws[ws.max_row]:
             cell.font = Font(bold=True)
+        _autosize(ws)
+        return _workbook_response(wb, f'relatorio_manutencao_{date_from}_{date_to}.xlsx')
 
-        for col in ws.columns:
-            max_len = max(len(str(c.value or '')) for c in col)
-            ws.column_dimensions[col[0].column_letter].width = max_len + 4
-
-        buffer = io.BytesIO()
-        wb.save(buffer)
-        buffer.seek(0)
-
-        response = HttpResponse(
-            buffer.getvalue(),
-            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        )
-        filename = f'relatorio_manutencao_{date_from}_{date_to}.xlsx'
-        response['Content-Disposition'] = f'attachment; filename="{filename}"'
-        return response
-
-
-# ─────────────────────────────────────────────────────────────
-# RELATÓRIO GERAL
-# ─────────────────────────────────────────────────────────────
 
 class GeneralReportView(LoginRequiredMixin, TemplateView):
     template_name = 'reports/general_report.html'
@@ -448,33 +307,23 @@ class GeneralReportView(LoginRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         date_from, date_to = _date_range_from_request(self.request)
-
-        fuel_qs = FuelRecord.objects.filter(date__range=(date_from, date_to))
-        trip_qs = Trip.objects.filter(start_time__date__range=(date_from, date_to))
-        maint_qs = Maintenance.objects.filter(date__range=(date_from, date_to))
-
+        fuel_qs = _fuel_queryset(self.request).filter(date__range=(date_from, date_to))
+        trip_qs = _trip_queryset(self.request).filter(start_time__date__range=(date_from, date_to))
+        maint_qs = _maintenance_queryset(self.request).filter(date__range=(date_from, date_to))
         fuel_agg = fuel_qs.aggregate(total_cost=Sum('total_cost'), total_liters=Sum('liters'), count=Count('id'))
-        trip_count = trip_qs.count()
-        total_distance = sum(t.distance() for t in trip_qs)
         maint_agg = maint_qs.aggregate(total_cost=Sum('cost'), count=Count('id'))
-
-        total_cost = (fuel_agg['total_cost'] or 0) + (maint_agg['total_cost'] or 0)
-
+        total_distance = sum(t.distance() for t in trip_qs)
         ctx.update({
             'date_from': date_from,
             'date_to': date_to,
-            # Combustível
             'fuel_cost': fuel_agg['total_cost'] or 0,
             'fuel_liters': fuel_agg['total_liters'] or 0,
             'fuel_count': fuel_agg['count'],
-            # Viagens
-            'trip_count': trip_count,
+            'trip_count': trip_qs.count(),
             'total_distance': total_distance,
-            # Manutenção
             'maint_cost': maint_agg['total_cost'] or 0,
             'maint_count': maint_agg['count'],
-            # Total geral
-            'total_cost': total_cost,
+            'total_cost': (fuel_agg['total_cost'] or 0) + (maint_agg['total_cost'] or 0),
         })
         return ctx
 
@@ -482,16 +331,12 @@ class GeneralReportView(LoginRequiredMixin, TemplateView):
 class GeneralReportPDFView(LoginRequiredMixin, View):
     def get(self, request):
         date_from, date_to = _date_range_from_request(request)
-
-        fuel_qs = FuelRecord.objects.filter(date__range=(date_from, date_to)).select_related('vehicle')
-        trip_qs = Trip.objects.filter(start_time__date__range=(date_from, date_to)).select_related('vehicle', 'driver', 'driver__user')
-        maint_qs = Maintenance.objects.filter(date__range=(date_from, date_to)).select_related('vehicle')
-
+        fuel_qs = _fuel_queryset(request).filter(date__range=(date_from, date_to))
+        trip_qs = _trip_queryset(request).filter(start_time__date__range=(date_from, date_to))
+        maint_qs = _maintenance_queryset(request).filter(date__range=(date_from, date_to))
         fuel_agg = fuel_qs.aggregate(total_cost=Sum('total_cost'), total_liters=Sum('liters'), count=Count('id'))
         maint_agg = maint_qs.aggregate(total_cost=Sum('cost'), count=Count('id'))
-        total_distance = sum(t.distance() for t in trip_qs)
-
-        html_string = render_to_string('reports/pdf/general_pdf.html', {
+        return _pdf_response(request, 'reports/pdf/general_pdf.html', {
             'date_from': date_from,
             'date_to': date_to,
             'fuel_records': fuel_qs.order_by('-date'),
@@ -501,81 +346,53 @@ class GeneralReportPDFView(LoginRequiredMixin, View):
             'fuel_liters': fuel_agg['total_liters'] or 0,
             'fuel_count': fuel_agg['count'],
             'trip_count': trip_qs.count(),
-            'total_distance': total_distance,
+            'total_distance': sum(t.distance() for t in trip_qs),
             'maint_cost': maint_agg['total_cost'] or 0,
             'maint_count': maint_agg['count'],
             'total_cost': (fuel_agg['total_cost'] or 0) + (maint_agg['total_cost'] or 0),
             'generated_at': now(),
-        })
-        pdf_file = HTML(string=html_string, base_url=request.build_absolute_uri()).write_pdf()
-        response = HttpResponse(pdf_file, content_type='application/pdf')
-        filename = f'relatorio_geral_{date_from}_{date_to}.pdf'
-        response['Content-Disposition'] = f'attachment; filename="{filename}"'
-        return response
+        }, f'relatorio_geral_{date_from}_{date_to}.pdf')
 
 
 class GeneralReportExcelView(LoginRequiredMixin, View):
     def get(self, request):
         date_from, date_to = _date_range_from_request(request)
-
-        fuel_qs = FuelRecord.objects.filter(date__range=(date_from, date_to)).select_related('vehicle')
-        trip_qs = Trip.objects.filter(start_time__date__range=(date_from, date_to)).select_related('vehicle', 'driver', 'driver__user')
-        maint_qs = Maintenance.objects.filter(date__range=(date_from, date_to)).select_related('vehicle')
-
-        wb = openpyxl.Workbook()
-
-        # ── Aba Resumo ──
-        ws_summary = wb.active
-        ws_summary.title = 'Resumo Geral'
-        _apply_header(ws_summary, ['Módulo', 'Qtd. Registros', 'Total (R$)', 'Observação'])
-
+        fuel_qs = _fuel_queryset(request).filter(date__range=(date_from, date_to))
+        trip_qs = _trip_queryset(request).filter(start_time__date__range=(date_from, date_to))
+        maint_qs = _maintenance_queryset(request).filter(date__range=(date_from, date_to))
         fuel_agg = fuel_qs.aggregate(total_cost=Sum('total_cost'), total_liters=Sum('liters'), count=Count('id'))
         maint_agg = maint_qs.aggregate(total_cost=Sum('cost'), count=Count('id'))
         total_distance = sum(t.distance() for t in trip_qs)
 
-        ws_summary.append(['Combustível', fuel_agg['count'], float(fuel_agg['total_cost'] or 0), f"{float(fuel_agg['total_liters'] or 0):.2f} litros"])
-        ws_summary.append(['Viagens', trip_qs.count(), '—', f"{total_distance} km percorridos"])
-        ws_summary.append(['Manutenção', maint_agg['count'], float(maint_agg['total_cost'] or 0), ''])
+        wb = openpyxl.Workbook()
+        ws_summary = wb.active
+        ws_summary.title = 'Resumo Geral'
+        _apply_header(ws_summary, ['Modulo', 'Qtd. Registros', 'Total (R$)', 'Observacao'])
+        ws_summary.append(['Combustivel', fuel_agg['count'], float(fuel_agg['total_cost'] or 0), f"{float(fuel_agg['total_liters'] or 0):.2f} litros"])
+        ws_summary.append(['Viagens', trip_qs.count(), '-', f'{total_distance} km percorridos'])
+        ws_summary.append(['Manutencao', maint_agg['count'], float(maint_agg['total_cost'] or 0), ''])
         ws_summary.append([])
         ws_summary.append(['CUSTO TOTAL', '', float((fuel_agg['total_cost'] or 0) + (maint_agg['total_cost'] or 0)), ''])
         for cell in ws_summary[ws_summary.max_row]:
             cell.font = Font(bold=True)
+        _autosize(ws_summary)
 
-        for col in ws_summary.columns:
-            ws_summary.column_dimensions[col[0].column_letter].width = max(len(str(c.value or '')) for c in col) + 4
-
-        # ── Aba Combustível ──
-        ws_fuel = wb.create_sheet('Combustível')
-        _apply_header(ws_fuel, ['Data', 'Veículo', 'Placa', 'Litros', 'Preço/L (R$)', 'Total (R$)', 'Km', 'Posto'])
+        ws_fuel = wb.create_sheet('Combustivel')
+        _apply_header(ws_fuel, ['Data', 'Veiculo', 'Placa', 'Litros', 'Preco/L (R$)', 'Total (R$)', 'Km', 'Posto'])
         for r in fuel_qs.order_by('-date'):
             ws_fuel.append([r.date.strftime('%d/%m/%Y'), str(r.vehicle), r.vehicle.plate, float(r.liters), float(r.price_per_liter), float(r.total_cost), r.odometer, r.gas_station])
-        for col in ws_fuel.columns:
-            ws_fuel.column_dimensions[col[0].column_letter].width = max(len(str(c.value or '')) for c in col) + 4
+        _autosize(ws_fuel)
 
-        # ── Aba Viagens ──
         ws_trips = wb.create_sheet('Viagens')
-        _apply_header(ws_trips, ['Início', 'Fim', 'Veículo', 'Motorista', 'Destino', 'Propósito', 'Distância (km)', 'Nº OS'])
+        _apply_header(ws_trips, ['Inicio', 'Fim', 'Veiculo', 'Motorista', 'Destino', 'Proposito', 'Distancia (km)', 'No OS'])
         for t in trip_qs.order_by('-start_time'):
-            ws_trips.append([t.start_time.strftime('%d/%m/%Y %H:%M'), t.end_time.strftime('%d/%m/%Y %H:%M') if t.end_time else '—', str(t.vehicle), str(t.driver), t.destination, t.purpose, t.distance(), t.service_order or '—'])
-        for col in ws_trips.columns:
-            ws_trips.column_dimensions[col[0].column_letter].width = max(len(str(c.value or '')) for c in col) + 4
+            ws_trips.append([t.start_time.strftime('%d/%m/%Y %H:%M'), t.end_time.strftime('%d/%m/%Y %H:%M') if t.end_time else '-', str(t.vehicle), str(t.driver), t.destination, t.purpose, t.distance(), t.service_order or '-'])
+        _autosize(ws_trips)
 
-        # ── Aba Manutenção ──
-        ws_maint = wb.create_sheet('Manutenção')
-        _apply_header(ws_maint, ['Data', 'Veículo', 'Tipo', 'Descrição', 'Oficina', 'Km', 'Custo (R$)'])
+        ws_maint = wb.create_sheet('Manutencao')
+        _apply_header(ws_maint, ['Data', 'Veiculo', 'Tipo', 'Descricao', 'Oficina', 'Km', 'Custo (R$)'])
         for m in maint_qs.order_by('-date'):
             ws_maint.append([m.date.strftime('%d/%m/%Y'), str(m.vehicle), m.get_type_display(), m.description, m.workshop, m.odometer, float(m.cost)])
-        for col in ws_maint.columns:
-            ws_maint.column_dimensions[col[0].column_letter].width = max(len(str(c.value or '')) for c in col) + 4
+        _autosize(ws_maint)
 
-        buffer = io.BytesIO()
-        wb.save(buffer)
-        buffer.seek(0)
-
-        response = HttpResponse(
-            buffer.getvalue(),
-            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        )
-        filename = f'relatorio_geral_{date_from}_{date_to}.xlsx'
-        response['Content-Disposition'] = f'attachment; filename="{filename}"'
-        return response
+        return _workbook_response(wb, f'relatorio_geral_{date_from}_{date_to}.xlsx')
