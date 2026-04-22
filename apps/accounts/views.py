@@ -202,7 +202,7 @@ class UserEditView(AdminRequiredMixin, View):
     def get(self, request, pk):
         u = get_object_or_404(self.get_queryset(request), pk=pk)
         return render(request, self.template_name, {
-            'form': UserEditForm(instance=u, company=get_user_company(request)),
+            'form': UserEditForm(instance=u, company=get_user_company(request.user)),
             'title': f'Editar - {u.username}',
             'editing': True,
         })
