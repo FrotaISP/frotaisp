@@ -19,7 +19,7 @@ def assign_default_company(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('accounts', '0001_initial'),
+        ('accounts', '0005_company_userprofile_company'),
         ('drivers', '0001_initial'),
     ]
 
