@@ -1,5 +1,7 @@
 # apps/fuel/forms.py
 from django import forms
+from django.utils import timezone
+from apps.core.uploads import ALLOWED_DOCUMENT_TYPES, validate_uploaded_file
 from .models import FuelRecord
 from apps.vehicles.models import Vehicle
 
@@ -18,6 +20,24 @@ class FuelRecordForm(forms.ModelForm):
             'receipt': forms.ClearableFileInput(attrs={'class': 'form-control'}),
         }
 
+    def clean_date(self):
+        date = self.cleaned_data.get('date')
+        if date and date > timezone.localdate():
+            raise forms.ValidationError('A data do abastecimento não pode estar no futuro.')
+        return date
+
+    def clean_liters(self):
+        liters = self.cleaned_data.get('liters')
+        if liters is not None and liters <= 0:
+            raise forms.ValidationError('A quantidade de litros deve ser maior que zero.')
+        return liters
+
+    def clean_price_per_liter(self):
+        price_per_liter = self.cleaned_data.get('price_per_liter')
+        if price_per_liter is not None and price_per_liter <= 0:
+            raise forms.ValidationError('O preço por litro deve ser maior que zero.')
+        return price_per_liter
+
     def clean_odometer(self):
         vehicle = self.cleaned_data.get('vehicle')
         odometer = self.cleaned_data.get('odometer')
@@ -25,7 +45,6 @@ class FuelRecordForm(forms.ModelForm):
         if vehicle and odometer is not None:
             current_km = vehicle.current_odometer
 
-            # O hodômetro do abastecimento não pode ser menor que o hodômetro atual do veículo
             if odometer < current_km:
                 raise forms.ValidationError(
                     f'O hodômetro informado ({odometer:,} km) é menor que o hodômetro '
@@ -33,7 +52,6 @@ class FuelRecordForm(forms.ModelForm):
                     f'Verifique o valor e tente novamente.'
                 )
 
-            # Também verifica contra o último abastecimento deste veículo
             last_fuel = (
                 FuelRecord.objects
                 .filter(vehicle=vehicle)
@@ -49,3 +67,15 @@ class FuelRecordForm(forms.ModelForm):
                 )
 
         return odometer
+
+    def clean_receipt(self):
+        receipt = self.cleaned_data.get('receipt')
+        try:
+            validate_uploaded_file(
+                receipt,
+                allowed_types=ALLOWED_DOCUMENT_TYPES,
+                label='O comprovante',
+            )
+        except ValueError as exc:
+            raise forms.ValidationError(str(exc)) from exc
+        return receipt
