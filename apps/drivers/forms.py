@@ -1,6 +1,7 @@
 # apps/drivers/forms.py
 from django import forms
 from django.contrib.auth.models import User
+from apps.accounts.models import UserProfile
 from .models import Driver
 
 
@@ -86,6 +87,10 @@ class DriverCreateForm(forms.Form):
             first_name=data['first_name'],
             last_name=data['last_name'],
             email=data.get('email', ''),
+        )
+        UserProfile.objects.update_or_create(
+            user=user,
+            defaults={'role': 'driver'},
         )
         driver = Driver.objects.create(
             user=user,
