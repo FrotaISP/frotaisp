@@ -41,9 +41,10 @@ class RegisterView(CreateView):
         form.fields.pop('role', None)
         return form
 
-    def _create_company_for_user(self, user):
-        base_name = f'{user.first_name} {user.last_name}'.strip() or user.username
-        name = f'{base_name} - Empresa'
+    def _create_company_for_user(self, user, form):
+        submitted_name = form.cleaned_data.get('company_name', '').strip()
+        base_name = submitted_name or f'{user.first_name} {user.last_name}'.strip() or user.username
+        name = submitted_name or f'{base_name} - Empresa'
         base_slug = slugify(name) or f'empresa-{user.pk}'
         slug = base_slug
         suffix = 1
@@ -63,7 +64,7 @@ class RegisterView(CreateView):
     def form_valid(self, form):
         user = form.save(commit=False)
         user.save()
-        company = self._create_company_for_user(user)
+        company = self._create_company_for_user(user, form)
         UserProfile.objects.update_or_create(
             user=user,
             defaults={
