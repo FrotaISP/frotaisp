@@ -3,8 +3,8 @@ from django.urls import reverse_lazy
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from apps.core.mixins import OperatorRequiredMixin, ManagerRequiredMixin, ProtectedDeleteMixin, TenantFormMixin, TenantQuerySetMixin
-from .models import Vehicle, VehicleChecklist, VehicleDocument
-from .forms import VehicleChecklistForm, VehicleDocumentForm, VehicleForm
+from .models import Tire, TireEvent, Vehicle, VehicleChecklist, VehicleDocument
+from .forms import TireEventForm, TireForm, VehicleChecklistForm, VehicleDocumentForm, VehicleForm
 
 
 class VehicleListView(TenantQuerySetMixin, LoginRequiredMixin, ListView):
@@ -111,3 +111,92 @@ class VehicleChecklistDeleteView(TenantQuerySetMixin, ManagerRequiredMixin, Dele
     model = VehicleChecklist
     template_name = 'vehicles/checklist_confirm_delete.html'
     success_url = reverse_lazy('vehicles:checklists')
+
+
+class TireListView(TenantQuerySetMixin, LoginRequiredMixin, ListView):
+    model = Tire
+    template_name = 'vehicles/tire_list.html'
+    context_object_name = 'tires'
+    paginate_by = 15
+
+    def get_queryset(self):
+        return super().get_queryset().select_related('current_vehicle')
+
+
+class TireDetailView(TenantQuerySetMixin, LoginRequiredMixin, DetailView):
+    model = Tire
+    template_name = 'vehicles/tire_detail.html'
+    context_object_name = 'tire'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['events'] = self.object.events.select_related('vehicle').all()[:20]
+        return context
+
+
+class TireCreateView(TenantFormMixin, OperatorRequiredMixin, CreateView):
+    model = Tire
+    form_class = TireForm
+    template_name = 'vehicles/tire_form.html'
+    success_url = reverse_lazy('vehicles:tires')
+
+
+class TireUpdateView(TenantFormMixin, TenantQuerySetMixin, OperatorRequiredMixin, UpdateView):
+    model = Tire
+    form_class = TireForm
+    template_name = 'vehicles/tire_form.html'
+    success_url = reverse_lazy('vehicles:tires')
+
+
+class TireDeleteView(TenantQuerySetMixin, ProtectedDeleteMixin, ManagerRequiredMixin, DeleteView):
+    model = Tire
+    template_name = 'vehicles/tire_confirm_delete.html'
+    success_url = reverse_lazy('vehicles:tires')
+    protected_error_message = 'Este pneu possui eventos no historico e nao pode ser excluido.'
+
+
+class TireEventListView(TenantQuerySetMixin, LoginRequiredMixin, ListView):
+    model = TireEvent
+    template_name = 'vehicles/tire_event_list.html'
+    context_object_name = 'events'
+    paginate_by = 20
+
+    def get_queryset(self):
+        return super().get_queryset().select_related('tire', 'vehicle')
+
+
+class TireEventCreateView(TenantFormMixin, OperatorRequiredMixin, CreateView):
+    model = TireEvent
+    form_class = TireEventForm
+    template_name = 'vehicles/tire_event_form.html'
+    success_url = reverse_lazy('vehicles:tire_events')
+
+    def get_initial(self):
+        initial = super().get_initial()
+        tire_id = self.request.GET.get('tire')
+        if tire_id:
+            initial['tire'] = tire_id
+        return initial
+
+    def get_success_url(self):
+        if self.object and self.object.tire_id:
+            return reverse_lazy('vehicles:tire_detail', kwargs={'pk': self.object.tire_id})
+        return super().get_success_url()
+
+
+class TireEventUpdateView(TenantFormMixin, TenantQuerySetMixin, OperatorRequiredMixin, UpdateView):
+    model = TireEvent
+    form_class = TireEventForm
+    template_name = 'vehicles/tire_event_form.html'
+    success_url = reverse_lazy('vehicles:tire_events')
+
+    def get_success_url(self):
+        if self.object and self.object.tire_id:
+            return reverse_lazy('vehicles:tire_detail', kwargs={'pk': self.object.tire_id})
+        return super().get_success_url()
+
+
+class TireEventDeleteView(TenantQuerySetMixin, ManagerRequiredMixin, DeleteView):
+    model = TireEvent
+    template_name = 'vehicles/tire_event_confirm_delete.html'
+    success_url = reverse_lazy('vehicles:tire_events')
