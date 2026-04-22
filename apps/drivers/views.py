@@ -5,7 +5,7 @@ from django.views import View
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
-from apps.core.mixins import OperatorRequiredMixin, ManagerRequiredMixin
+from apps.core.mixins import OperatorRequiredMixin, ManagerRequiredMixin, ProtectedDeleteMixin
 
 from .models import Driver
 from .forms import DriverCreateForm, DriverUpdateForm
@@ -61,7 +61,8 @@ class DriverUpdateView(OperatorRequiredMixin, View):
         return render(request, self.template_name, {'form': form, 'object': driver})
 
 
-class DriverDeleteView(ManagerRequiredMixin, DeleteView):
+class DriverDeleteView(ProtectedDeleteMixin, ManagerRequiredMixin, DeleteView):
     model = Driver
     template_name = 'drivers/driver_confirm_delete.html'
     success_url = reverse_lazy('drivers:list')
+    protected_error_message = 'Este motorista não pode ser excluído porque possui viagens vinculadas.'
