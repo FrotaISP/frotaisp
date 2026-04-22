@@ -1,159 +1,142 @@
-# 🚗 Frota ISP
+# Frota ISP
 
-Sistema web para gestão de frotas voltado para provedores de internet (ISP), permitindo controle de motoristas, abastecimento, operações e visualização de dados em dashboard.
+Sistema web para gestao de frotas voltado para provedores de internet (ISP), com foco em operacao, rastreabilidade e visibilidade dos custos da frota.
 
----
+## Sobre o projeto
 
-## 📌 Sobre o projeto
+O Frota ISP organiza o controle operacional de veiculos utilizados por empresas de telecomunicacoes. A aplicacao foi construida em Django com arquitetura modular por apps, cobrindo o fluxo principal da rotina de frota.
 
-O **Frota ISP** é uma aplicação desenvolvida com foco em organização e controle operacional de veículos utilizados por empresas de telecomunicações.
+Hoje o sistema inclui:
 
-O sistema permite:
+- autenticacao e gestao de usuarios
+- cadastro de motoristas e veiculos
+- registro de viagens
+- controle de abastecimentos
+- registro de manutencoes
+- dashboard operacional
+- relatorios em HTML, PDF e Excel
+- endpoints REST iniciais para dashboard e veiculos
 
-* Gerenciamento de motoristas
-* Controle de abastecimentos
-* Monitoramento de uso da frota
-* Visualização de dados em dashboards
-* Organização modular por apps
+## Arquitetura
 
----
+O projeto segue uma arquitetura modular baseada em apps Django:
 
-## 🏗️ Arquitetura
-
-O projeto segue uma arquitetura modular baseada em apps do Django:
-
-```
+```text
 apps/
-  accounts/   # Autenticação e usuários
-  core/       # Funcionalidades base e utilidades
-  dashboard/  # Visualização e métricas
-  drivers/    # Gestão de motoristas
-  fuel/       # Controle de abastecimento
+  accounts/      # autenticacao, perfis e usuarios
+  core/          # modelos e mixins compartilhados
+  dashboard/     # indicadores, visao geral e API resumida
+  drivers/       # cadastro e gestao de motoristas
+  fuel/          # abastecimentos
+  maintenance/   # manutencoes e alertas
+  reports/       # relatorios HTML, PDF e Excel
+  trips/         # viagens e deslocamentos
+  vehicles/      # cadastro e controle de veiculos
+config/          # settings, urls, wsgi/asgi
 ```
 
----
+## Stack
 
-## ⚙️ Tecnologias utilizadas
+- Python 3.11+
+- Django 4.2
+- Django REST Framework
+- django-cors-headers
+- SQLite para desenvolvimento local
+- PostgreSQL por variaveis de ambiente
+- WeasyPrint para PDFs
+- openpyxl para planilhas Excel
 
-* Python
-* Django
-* Django REST Framework (se aplicável)
-* SQLite / PostgreSQL (ajustável)
-* HTML / CSS / JavaScript
+## Como executar
 
----
-
-## 🚀 Como rodar o projeto
-
-### 1. Clonar o repositório
+### 1. Clone o repositorio
 
 ```bash
-git clone https://github.com/SEU-USUARIO/frota-isp.git
-cd frota-isp
+git clone https://github.com/FrotaISP/frotaisp.git
+cd frotaisp
 ```
 
-### 2. Criar ambiente virtual
+### 2. Crie e ative um ambiente virtual
 
 ```bash
-python -m venv venv
-source venv/bin/activate  # Linux/Mac
-venv\Scripts\activate     # Windows
+python -m venv .venv
+source .venv/bin/activate  # Linux/Mac
+.venv\Scripts\activate     # Windows
 ```
 
-### 3. Instalar dependências
+### 3. Instale as dependencias
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 4. Configurar variáveis de ambiente
+### 4. Configure o ambiente
 
-Crie um arquivo `.env` baseado no `.env.example`
+Crie um arquivo `.env` com base em `.env.example`.
 
----
+Por padrao, se `DB_NAME` estiver vazio, o projeto usa SQLite localmente. Para PostgreSQL, basta preencher as variaveis `DB_*`.
 
-### 5. Aplicar migrações
+### 5. Aplique as migracoes
 
 ```bash
 python manage.py migrate
 ```
 
----
-
-### 6. Criar superusuário
+### 6. Crie um superusuario
 
 ```bash
 python manage.py createsuperuser
 ```
 
----
-
-### 7. Rodar o servidor
+### 7. Rode o servidor
 
 ```bash
 python manage.py runserver
 ```
 
-Acesse em:
-👉 http://127.0.0.1:8000
+Acesse em [http://127.0.0.1:8000](http://127.0.0.1:8000).
 
----
+## Testes
 
-## 📊 Funcionalidades
+Execute a suite com:
 
-* Cadastro e gestão de motoristas
-* Controle de abastecimento
-* Organização por módulos (apps)
-* Dashboard com visão geral
-* Sistema de autenticação
-
----
-
-## 🔒 Variáveis de ambiente
-
-Exemplo de configuração:
-
+```bash
+python manage.py test
 ```
+
+## Variaveis de ambiente principais
+
+```env
 DEBUG=True
-SECRET_KEY=sua_chave_secreta
-DATABASE_URL=sqlite:///db.sqlite3
+SECRET_KEY=substitua-por-uma-chave-secreta-longa-e-aleatoria
+ALLOWED_HOSTS=localhost,127.0.0.1
+CSRF_TRUSTED_ORIGINS=http://localhost:8000,http://127.0.0.1:8000
+DB_NAME=
+DB_USER=
+DB_PASSWORD=
+DB_HOST=localhost
+DB_PORT=5432
 ```
 
----
+## Funcionalidades atuais
 
-## 📁 Estrutura do projeto
+- gestao de usuarios com perfis e papeis
+- controle de permissao por perfil
+- cadastro completo de motoristas
+- cadastro e acompanhamento de veiculos
+- registro de viagens com odometro
+- abastecimentos com comprovante e custo total calculado
+- manutencoes com alertas futuros
+- dashboard com cards e alertas operacionais
+- exportacao de relatorios em PDF e Excel
 
-```
-frota_isp/
-  apps/
-  manage.py
-  requirements.txt
-```
+## Melhorias futuras
 
----
+- integracao com APIs externas de rastreamento ou GPS
+- ampliacao da cobertura da API REST
+- testes de integracao para fluxos principais
+- relatorios analiticos adicionais
+- pipeline de deploy automatizado
 
-## 🧠 Melhorias futuras
+## Contribuicao
 
-* Integração com APIs externas (rastreamento/GPS)
-* Relatórios avançados
-* Controle de manutenção de veículos
-* Sistema de permissões mais granular
-* Deploy em ambiente cloud
-
----
-
-## 🤝 Contribuição
-
-Sinta-se livre para abrir issues ou enviar pull requests.
-
----
-
-## 📄 Licença
-
-Este projeto está sob a licença MIT.
-
----
-
-## 👨‍💻 Autor
-
-Desenvolvido por João Wittler
+Sinta-se a vontade para abrir issues e pull requests com correcoes, melhorias ou novas funcionalidades.
