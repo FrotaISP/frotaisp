@@ -111,3 +111,95 @@ class PreventiveMaintenancePlan(TimeStampedModel):
         due_by_date = self.next_due_date and today <= self.next_due_date <= today + timedelta(days=15)
         due_by_km = self.next_due_km and self.vehicle.current_odometer >= self.next_due_km - 500
         return self.status == 'active' and bool(due_by_date or due_by_km)
+
+
+class WorkOrder(TimeStampedModel):
+    STATUS_CHOICES = [
+        ('open', 'Aberta'),
+        ('scheduled', 'Agendada'),
+        ('in_progress', 'Em andamento'),
+        ('waiting_parts', 'Aguardando pecas'),
+        ('completed', 'Concluida'),
+        ('cancelled', 'Cancelada'),
+    ]
+    PRIORITY_CHOICES = PreventiveMaintenancePlan.PRIORITY_CHOICES
+    CATEGORY_CHOICES = [
+        ('maintenance', 'Manutencao'),
+        ('fuel', 'Abastecimento'),
+        ('tires', 'Pneus'),
+        ('damage', 'Avaria'),
+        ('document', 'Documento'),
+        ('other', 'Outro'),
+    ]
+
+    company = models.ForeignKey('accounts.Company', on_delete=models.PROTECT, related_name='work_orders', verbose_name='Empresa')
+    vehicle = models.ForeignKey('vehicles.Vehicle', on_delete=models.PROTECT, related_name='work_orders', verbose_name='Veiculo')
+    driver = models.ForeignKey('drivers.Driver', on_delete=models.SET_NULL, related_name='work_orders', verbose_name='Motorista', null=True, blank=True)
+    title = models.CharField('Titulo', max_length=140)
+    category = models.CharField('Categoria', max_length=30, choices=CATEGORY_CHOICES, default='maintenance')
+    priority = models.CharField('Prioridade', max_length=20, choices=PRIORITY_CHOICES, default='medium')
+    status = models.CharField('Status', max_length=20, choices=STATUS_CHOICES, default='open')
+    opened_at = models.DateTimeField('Aberta em', default=timezone.now)
+    scheduled_date = models.DateField('Data agendada', null=True, blank=True)
+    completed_at = models.DateTimeField('Concluida em', null=True, blank=True)
+    odometer = models.IntegerField('Hodometro', null=True, blank=True)
+    description = models.TextField('Descricao')
+    resolution = models.TextField('Resolucao', blank=True)
+    estimated_cost = models.DecimalField('Custo estimado', max_digits=10, decimal_places=2, default=0)
+    actual_cost = models.DecimalField('Custo realizado', max_digits=10, decimal_places=2, default=0)
+    attachment = models.FileField('Anexo', upload_to='work_orders/', blank=True)
+
+    class Meta:
+        verbose_name = 'Ordem de Servico'
+        verbose_name_plural = 'Ordens de Servico'
+        ordering = ['status', '-opened_at']
+
+    def __str__(self):
+        return f'OS #{self.pk or "nova"} - {self.title}'
+
+    def save(self, *args, **kwargs):
+        if not self.company_id and self.vehicle_id:
+            self.company = self.vehicle.company
+        if self.status == 'completed' and not self.completed_at:
+            self.completed_at = timezone.now()
+        super().save(*args, **kwargs)
+
+
+class VehicleExpense(TimeStampedModel):
+    CATEGORY_CHOICES = [
+        ('fuel', 'Combustivel'),
+        ('maintenance', 'Manutencao'),
+        ('tires', 'Pneus'),
+        ('documents', 'Documentos'),
+        ('insurance', 'Seguro'),
+        ('taxes', 'Taxas e impostos'),
+        ('other', 'Outros'),
+    ]
+
+    company = models.ForeignKey('accounts.Company', on_delete=models.PROTECT, related_name='vehicle_expenses', verbose_name='Empresa')
+    vehicle = models.ForeignKey('vehicles.Vehicle', on_delete=models.PROTECT, related_name='expenses', verbose_name='Veiculo', null=True, blank=True)
+    work_order = models.ForeignKey(WorkOrder, on_delete=models.SET_NULL, related_name='expenses', verbose_name='Ordem de servico', null=True, blank=True)
+    date = models.DateField('Data', default=timezone.localdate)
+    category = models.CharField('Categoria', max_length=30, choices=CATEGORY_CHOICES)
+    cost_center = models.CharField('Centro de custo', max_length=100, blank=True)
+    supplier = models.CharField('Fornecedor', max_length=120, blank=True)
+    description = models.CharField('Descricao', max_length=180)
+    amount = models.DecimalField('Valor', max_digits=10, decimal_places=2)
+    receipt = models.FileField('Comprovante', upload_to='expenses/', blank=True)
+    notes = models.TextField('Observacoes', blank=True)
+
+    class Meta:
+        verbose_name = 'Despesa de Frota'
+        verbose_name_plural = 'Despesas de Frota'
+        ordering = ['-date', '-created_at']
+
+    def __str__(self):
+        return f'{self.get_category_display()} - R$ {self.amount}'
+
+    def save(self, *args, **kwargs):
+        if not self.company_id:
+            if self.vehicle_id:
+                self.company = self.vehicle.company
+            elif self.work_order_id:
+                self.company = self.work_order.company
+        super().save(*args, **kwargs)
