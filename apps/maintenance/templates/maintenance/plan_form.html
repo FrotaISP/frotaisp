@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% block title %}{% if object %}Editar preventiva{% else %}Nova preventiva{% endif %} · FleetISP{% endblock %}
+{% block content %}
+<h2 class="mb-4"><i class="bi bi-calendar2-check me-2"></i>{% if object %}Editar preventiva{% else %}Novo plano preventivo{% endif %}</h2>
+<div class="card shadow-sm"><div class="card-body"><form method="post" novalidate>{% csrf_token %}
+{% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+<div class="row"><div class="col-md-6 mb-3"><label class="form-label">Veiculo</label>{{ form.vehicle }}{{ form.vehicle.errors }}</div><div class="col-md-6 mb-3"><label class="form-label">Servico</label>{{ form.service_name }}{{ form.service_name.errors }}</div></div>
+<div class="mb-3"><label class="form-label">Descricao</label>{{ form.description }}{{ form.description.errors }}</div>
+<div class="row"><div class="col-md-3 mb-3"><label class="form-label">Recorrencia km</label>{{ form.frequency_km }}{{ form.frequency_km.errors }}</div><div class="col-md-3 mb-3"><label class="form-label">Recorrencia dias</label>{{ form.frequency_days }}{{ form.frequency_days.errors }}</div><div class="col-md-3 mb-3"><label class="form-label">Ultima data</label>{{ form.last_service_date }}{{ form.last_service_date.errors }}</div><div class="col-md-3 mb-3"><label class="form-label">Ultimo km</label>{{ form.last_service_km }}{{ form.last_service_km.errors }}</div></div>
+<div class="row"><div class="col-md-3 mb-3"><label class="form-label">Proxima data</label>{{ form.next_due_date }}{{ form.next_due_date.errors }}</div><div class="col-md-3 mb-3"><label class="form-label">Proximo km</label>{{ form.next_due_km }}{{ form.next_due_km.errors }}</div><div class="col-md-3 mb-3"><label class="form-label">Prioridade</label>{{ form.priority }}{{ form.priority.errors }}</div><div class="col-md-3 mb-3"><label class="form-label">Status</label>{{ form.status }}{{ form.status.errors }}</div></div>
+<div class="mb-3"><label class="form-label">Observacoes</label>{{ form.notes }}{{ form.notes.errors }}</div>
+<button class="btn btn-primary">Salvar</button> <a href="{% url 'maintenance:plans' %}" class="btn btn-secondary">Cancelar</a>
+</form></div></div>
+{% endblock %}
