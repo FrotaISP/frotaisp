@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% block title %}{% if object %}Editar checklist{% else %}Novo checklist{% endif %} · FleetISP{% endblock %}
+{% block content %}
+<h2 class="mb-4"><i class="bi bi-clipboard-check me-2"></i>{% if object %}Editar checklist{% else %}Novo checklist{% endif %}</h2>
+<div class="card shadow-sm"><div class="card-body"><form method="post" enctype="multipart/form-data" novalidate>{% csrf_token %}
+{% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+<div class="row"><div class="col-md-4 mb-3"><label class="form-label">Veiculo</label>{{ form.vehicle }}{{ form.vehicle.errors }}</div><div class="col-md-4 mb-3"><label class="form-label">Motorista</label>{{ form.driver }}{{ form.driver.errors }}</div><div class="col-md-4 mb-3"><label class="form-label">Data</label>{{ form.inspected_at }}{{ form.inspected_at.errors }}</div></div>
+<div class="row"><div class="col-md-6 mb-3"><label class="form-label">Hodometro</label>{{ form.odometer }}{{ form.odometer.errors }}</div><div class="col-md-6 mb-3"><label class="form-label">Status</label>{{ form.status }}{{ form.status.errors }}</div></div>
+<div class="row row-cols-1 row-cols-md-2 g-2 mb-3">
+<div class="col"><div class="form-check">{{ form.tires_ok }} <label class="form-check-label">Pneus em bom estado</label></div></div>
+<div class="col"><div class="form-check">{{ form.oil_ok }} <label class="form-check-label">Oleo/fluido ok</label></div></div>
+<div class="col"><div class="form-check">{{ form.brakes_ok }} <label class="form-check-label">Freios ok</label></div></div>
+<div class="col"><div class="form-check">{{ form.lights_ok }} <label class="form-check-label">Luzes ok</label></div></div>
+<div class="col"><div class="form-check">{{ form.safety_items_ok }} <label class="form-check-label">Itens de seguranca ok</label></div></div>
+<div class="col"><div class="form-check">{{ form.cleanliness_ok }} <label class="form-check-label">Limpeza ok</label></div></div>
+</div>
+<div class="mb-3"><label class="form-label">Observacoes</label>{{ form.notes }}{{ form.notes.errors }}</div>
+<div class="mb-3"><label class="form-label">Foto</label>{{ form.photo }}{{ form.photo.errors }}</div>
+<button class="btn btn-primary">Salvar</button> <a href="{% url 'vehicles:checklists' %}" class="btn btn-secondary">Cancelar</a>
+</form></div></div>
+{% endblock %}
