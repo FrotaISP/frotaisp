@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+
+{% block title %}Excluir Manutenção · FleetISP{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm">
+    <div class="card-header bg-white">
+        <h5 class="mb-0 text-danger">Confirmar Exclusão</h5>
+    </div>
+    <div class="card-body">
+        <p>Tem certeza que deseja excluir a manutenção do veículo <strong>{{ maintenance.vehicle.plate }}</strong> realizada em <strong>{{ maintenance.date|date:"d/m/Y" }}</strong> ({{ maintenance.get_type_display }})?</p>
+        <p class="text-muted">Esta ação não pode ser desfeita.</p>
+
+        <form method="post">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger">
+                <i class="bi bi-trash"></i> Sim, excluir
+            </button>
+            <a href="{% url 'maintenance:list' %}" class="btn btn-secondary">Cancelar</a>
+        </form>
+    </div>
+</div>
+{% endblock %}

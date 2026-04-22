@@ -1,0 +1,49 @@
+<!-- apps/accounts/templates/accounts/login.html -->
+{% extends 'accounts/base_auth.html' %}
+
+{% block title %}Login · FleetISP{% endblock %}
+
+{% block header_text %}Acesse sua conta{% endblock %}
+
+{% block content %}
+<form method="post" novalidate>
+    {% csrf_token %}
+    
+    {% if form.non_field_errors %}
+        <div class="alert alert-danger">
+            {% for error in form.non_field_errors %}
+                {{ error }}
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <div class="mb-3">
+        <label for="{{ form.username.id_for_label }}" class="form-label">Usuário</label>
+        {{ form.username }}
+        {% if form.username.errors %}
+            <div class="text-danger small mt-1">
+                {{ form.username.errors|striptags }}
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="mb-3">
+        <label for="{{ form.password.id_for_label }}" class="form-label">Senha</label>
+        {{ form.password }}
+        {% if form.password.errors %}
+            <div class="text-danger small mt-1">
+                {{ form.password.errors|striptags }}
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="d-grid">
+        <button type="submit" class="btn btn-primary">Entrar</button>
+    </div>
+</form>
+{% endblock %}
+
+{% block footer %}
+    <p class="mb-0">Não tem uma conta? <a href="{% url 'accounts:register' %}" class="text-decoration-none">Registre-se</a></p>
+    <p><a href="#" class="text-muted small">Esqueceu a senha?</a></p>
+{% endblock %}
