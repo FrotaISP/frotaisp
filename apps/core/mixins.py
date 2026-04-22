@@ -1,6 +1,7 @@
 # apps/core/mixins.py
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
+from django.db.models import ProtectedError
 from django.shortcuts import redirect
 
 
@@ -33,6 +34,19 @@ def get_user_profile(user):
 def _deny(request, msg='Você não tem permissão para realizar esta ação.'):
     messages.error(request, msg)
     return redirect(request.META.get('HTTP_REFERER', '/'))
+
+
+class ProtectedDeleteMixin:
+    protected_error_message = 'Este registro não pode ser excluído porque possui vínculos com o histórico do sistema.'
+
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        success_url = self.get_success_url()
+        try:
+            return super().post(request, *args, **kwargs)
+        except ProtectedError:
+            messages.error(request, self.protected_error_message)
+            return redirect(success_url)
 
 
 # ── Mixins reutilizáveis ──────────────────────────────────────────────────────
