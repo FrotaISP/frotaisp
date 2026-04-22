@@ -1,5 +1,7 @@
 # apps/maintenance/forms.py
 from django import forms
+from django.utils import timezone
+from apps.core.uploads import ALLOWED_DOCUMENT_TYPES, validate_uploaded_file
 from .models import Maintenance
 from apps.fuel.models import FuelRecord
 
@@ -24,6 +26,18 @@ class MaintenanceForm(forms.ModelForm):
             'invoice': forms.ClearableFileInput(attrs={'class': 'form-control'}),
         }
 
+    def clean_date(self):
+        date = self.cleaned_data.get('date')
+        if date and date > timezone.localdate():
+            raise forms.ValidationError('A data da manutenção não pode estar no futuro.')
+        return date
+
+    def clean_cost(self):
+        cost = self.cleaned_data.get('cost')
+        if cost is not None and cost <= 0:
+            raise forms.ValidationError('O custo da manutenção deve ser maior que zero.')
+        return cost
+
     def clean_odometer(self):
         vehicle = self.cleaned_data.get('vehicle')
         odometer = self.cleaned_data.get('odometer')
@@ -38,7 +52,6 @@ class MaintenanceForm(forms.ModelForm):
                     f'Verifique o valor e tente novamente.'
                 )
 
-            # Verifica contra último abastecimento
             last_fuel = (
                 FuelRecord.objects
                 .filter(vehicle=vehicle)
@@ -54,13 +67,31 @@ class MaintenanceForm(forms.ModelForm):
 
         return odometer
 
+    def clean_invoice(self):
+        invoice = self.cleaned_data.get('invoice')
+        try:
+            validate_uploaded_file(
+                invoice,
+                allowed_types=ALLOWED_DOCUMENT_TYPES,
+                label='O comprovante da manutenção',
+            )
+        except ValueError as exc:
+            raise forms.ValidationError(str(exc)) from exc
+        return invoice
+
     def clean(self):
         cleaned = super().clean()
+        date = cleaned.get('date')
         next_km = cleaned.get('next_alert_km')
         odometer = cleaned.get('odometer')
+        next_alert_date = cleaned.get('next_alert_date')
 
         if next_km and odometer and next_km <= odometer:
             raise forms.ValidationError(
                 'O km do próximo alerta deve ser maior que o hodômetro atual da manutenção.'
             )
+
+        if date and next_alert_date and next_alert_date <= date:
+            self.add_error('next_alert_date', 'A data do próximo alerta deve ser posterior à data da manutenção.')
+
         return cleaned
