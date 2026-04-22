@@ -8,5 +8,7 @@ APP_ENV = config('APP_ENV', default='dev').strip().lower()
 
 if APP_ENV == 'prod':
     from .settings_prod import *
+elif APP_ENV == 'test':
+    from .settings_test import *
 else:
     from .settings_dev import *
