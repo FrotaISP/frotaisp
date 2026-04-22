@@ -32,7 +32,11 @@ apps/
   reports/       # relatorios HTML, PDF e Excel
   trips/         # viagens e deslocamentos
   vehicles/      # cadastro e controle de veiculos
-config/          # settings, urls, wsgi/asgi
+config/
+  settings.py        # seletor por ambiente
+  settings_base.py   # configuracoes compartilhadas
+  settings_dev.py    # desenvolvimento
+  settings_prod.py   # producao
 ```
 
 ## Stack
@@ -73,7 +77,7 @@ pip install -r requirements.txt
 
 Crie um arquivo `.env` com base em `.env.example`.
 
-Por padrao, se `DB_NAME` estiver vazio, o projeto usa SQLite localmente. Para PostgreSQL, basta preencher as variaveis `DB_*`.
+Por padrao, o projeto usa `APP_ENV=dev`. Nesse modo, se `DB_NAME` estiver vazio, o banco local sera SQLite. Para PostgreSQL, basta preencher as variaveis `DB_*`.
 
 ### 5. Aplique as migracoes
 
@@ -95,6 +99,23 @@ python manage.py runserver
 
 Acesse em [http://127.0.0.1:8000](http://127.0.0.1:8000).
 
+## Settings por ambiente
+
+O entrypoint padrao continua sendo `config.settings`, mas ele seleciona o modulo correto conforme `APP_ENV`.
+
+- `APP_ENV=dev`: usa `config.settings_dev`
+- `APP_ENV=prod`: usa `config.settings_prod`
+
+Exemplo para producao:
+
+```env
+APP_ENV=prod
+DEBUG=False
+SECRET_KEY=uma-chave-secreta-segura
+ALLOWED_HOSTS=seu-dominio.com,www.seu-dominio.com
+CSRF_TRUSTED_ORIGINS=https://seu-dominio.com,https://www.seu-dominio.com
+```
+
 ## Testes
 
 Execute a suite com:
@@ -103,13 +124,27 @@ Execute a suite com:
 python manage.py test
 ```
 
+### Preparacao recomendada para testes
+
+Antes de rodar testes manuais ou de homologacao, valide este checklist:
+
+1. aplique as migracoes em um banco limpo
+2. confirme que `APP_ENV=dev` no ambiente local de teste
+3. crie um usuario admin e perfis de `manager`, `operator` e `driver`
+4. cadastre ao menos um veiculo, um motorista, uma viagem, um abastecimento e uma manutencao
+5. valide exportacao de relatorios em HTML, Excel e PDF
+6. valide acesso e bloqueios por papel nas telas principais
+7. rode `python manage.py test` antes de qualquer teste exploratorio
+
 ## Variaveis de ambiente principais
 
 ```env
+APP_ENV=dev
 DEBUG=True
 SECRET_KEY=substitua-por-uma-chave-secreta-longa-e-aleatoria
 ALLOWED_HOSTS=localhost,127.0.0.1
 CSRF_TRUSTED_ORIGINS=http://localhost:8000,http://127.0.0.1:8000
+CORS_ALLOWED_ORIGINS=
 DB_NAME=
 DB_USER=
 DB_PASSWORD=
@@ -128,6 +163,7 @@ DB_PORT=5432
 - manutencoes com alertas futuros
 - dashboard com cards e alertas operacionais
 - exportacao de relatorios em PDF e Excel
+- API REST inicial para dashboard e veiculos
 
 ## Melhorias futuras
 
