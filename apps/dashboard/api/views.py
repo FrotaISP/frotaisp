@@ -4,12 +4,14 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.utils import timezone
 from datetime import timedelta
-from django.db.models import Sum, Count
+from django.db.models import Sum
 
+from apps.core.mixins import scope_queryset_for_user
 from apps.vehicles.models import Vehicle
 from apps.drivers.models import Driver
 from apps.trips.models import Trip
 from apps.fuel.models import FuelRecord
+
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -18,18 +20,25 @@ def dashboard_summary(request):
     first_day = today.replace(day=1)
     last_30 = today - timedelta(days=30)
 
-    total_vehicles = Vehicle.objects.filter(is_active=True).count()
-    available_drivers = Driver.objects.filter(is_available=True).count()
-    drivers_in_trip = Trip.objects.filter(end_time__isnull=True).count()
+    vehicles_qs = scope_queryset_for_user(Vehicle.objects.all(), request.user)
+    drivers_qs = scope_queryset_for_user(Driver.objects.all(), request.user)
+    trips_qs = scope_queryset_for_user(Trip.objects.all(), request.user)
+    fuel_qs = scope_queryset_for_user(FuelRecord.objects.all(), request.user)
 
-    month_km = 0
-    for trip in Trip.objects.filter(start_time__date__gte=first_day, end_odometer__isnull=False):
-        month_km += trip.distance()
+    total_vehicles = vehicles_qs.filter(is_active=True).count()
+    available_drivers = drivers_qs.filter(is_available=True).count()
+    drivers_in_trip = trips_qs.filter(end_time__isnull=True).count()
 
-    fuel_cost = FuelRecord.objects.filter(date__gte=last_30).aggregate(total=Sum('total_cost'))['total'] or 0
-    total_km_30 = 0
-    for trip in Trip.objects.filter(start_time__date__gte=last_30, end_odometer__isnull=False):
-        total_km_30 += trip.distance()
+    month_km = sum(
+        trip.distance()
+        for trip in trips_qs.filter(start_time__date__gte=first_day, end_odometer__isnull=False)
+    )
+
+    fuel_cost = fuel_qs.filter(date__gte=last_30).aggregate(total=Sum('total_cost'))['total'] or 0
+    total_km_30 = sum(
+        trip.distance()
+        for trip in trips_qs.filter(start_time__date__gte=last_30, end_odometer__isnull=False)
+    )
     avg_cost_per_km = fuel_cost / total_km_30 if total_km_30 else 0
 
     return Response({
