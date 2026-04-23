@@ -36,13 +36,13 @@ Depois abra o app com:
 
 ## Endereço da API
 
-O app usa por padrão:
+O app usa por padrão o valor configurado em `app.json`:
 
 ```text
 http://191.123.65.10:5000/api/mobile
 ```
 
-Se o backend estiver em outro endereço, altere `src/api/client.js`.
+Se o backend estiver em outro endereço, altere o campo `expo.extra.apiBaseUrl` em `app.json`.
 
 ## Backend necessário
 
@@ -53,6 +53,14 @@ python manage.py migrate
 ```
 
 Isso é obrigatório porque a autenticação mobile usa `rest_framework.authtoken`.
+
+## Fluxo sugerido de teste
+
+1. Garanta que o usuário tenha `UserProfile.role = 'driver'`.
+2. Garanta que exista um `Driver` vinculado ao mesmo `User`.
+3. Se quiser restringir o veículo do motorista, preencha `Vehicle.current_driver`.
+4. Faça login no app com o mesmo usuário e senha do Django.
+5. Teste iniciar viagem, finalizar viagem, checklist e atualização de localização.
 
 ## Próximos passos sugeridos
 
