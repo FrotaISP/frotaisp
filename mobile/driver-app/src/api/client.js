@@ -1,0 +1,46 @@
+const API_BASE_URL = 'http://191.123.65.10:5000/api/mobile';
+
+async function request(path, { method = 'GET', token, body } = {}) {
+  const headers = {
+    Accept: 'application/json',
+  };
+
+  if (body) {
+    headers['Content-Type'] = 'application/json';
+  }
+
+  if (token) {
+    headers.Authorization = `Token ${token}`;
+  }
+
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method,
+    headers,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+
+  if (response.status === 204) {
+    return null;
+  }
+
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(data.detail || data.non_field_errors?.[0] || 'Não foi possível completar a requisição.');
+  }
+
+  return data;
+}
+
+export const api = {
+  login: (payload) => request('/auth/login/', { method: 'POST', body: payload }),
+  logout: (token) => request('/auth/logout/', { method: 'POST', token }),
+  me: (token) => request('/me/', { token }),
+  dashboard: (token) => request('/dashboard/', { token }),
+  trips: (token) => request('/trips/', { token }),
+  startTrip: (token, payload) => request('/trips/', { method: 'POST', token, body: payload }),
+  finishTrip: (token, id, payload) => request(`/trips/${id}/finish/`, { method: 'POST', token, body: payload }),
+  checklists: (token) => request('/checklists/', { token }),
+  createChecklist: (token, payload) => request('/checklists/', { method: 'POST', token, body: payload }),
+  updateLocation: (token, payload) => request('/location/', { method: 'POST', token, body: payload }),
+};
