@@ -106,6 +106,11 @@ export default function HomeScreen() {
   }
 
   async function handleStartTrip() {
+    if (!tripForm.destination || !tripForm.purpose || !tripForm.start_odometer) {
+      setError('Preencha destino, objetivo e hodômetro inicial.');
+      return;
+    }
+
     try {
       setBusyAction('startTrip');
       setError('');
@@ -124,6 +129,11 @@ export default function HomeScreen() {
   }
 
   async function handleFinishTrip() {
+    if (!finishOdometer) {
+      setError('Informe o hodômetro final da viagem.');
+      return;
+    }
+
     try {
       setBusyAction('finishTrip');
       setError('');
@@ -166,6 +176,11 @@ export default function HomeScreen() {
   }
 
   async function handleLocation() {
+    if (!locationForm.latitude || !locationForm.longitude) {
+      setError('Informe latitude e longitude para enviar a localização.');
+      return;
+    }
+
     try {
       setBusyAction('location');
       setError('');
