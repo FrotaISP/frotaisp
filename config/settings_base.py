@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'rest_framework.authtoken',
     'corsheaders',
     'apps.core',
     'apps.accounts.apps.AccountsConfig',
@@ -55,6 +56,7 @@ INSTALLED_APPS = [
     'apps.maintenance',
     'apps.reports',
     'apps.dashboard',
+    'apps.mobile_api.apps.MobileApiConfig',
 ]
 
 MIDDLEWARE = [
@@ -141,6 +143,10 @@ LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/accounts/login/'
 
 REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.SessionAuthentication',
+        'rest_framework.authentication.TokenAuthentication',
+    ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
     ],
