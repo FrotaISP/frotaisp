@@ -25,6 +25,7 @@ urlpatterns = [
     # APIs REST (todas sob /api/)
     path('api/dashboard/', include('apps.dashboard.api.urls')),
     path('api/vehicles/', include('apps.vehicles.api.urls')),
+    path('api/mobile/', include('apps.mobile_api.urls')),
     # Futuramente:
     # path('api/drivers/', include('apps.drivers.api.urls')),
     # path('api/trips/', include('apps.trips.api.urls')),
