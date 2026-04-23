@@ -5,13 +5,12 @@ Aplicativo mobile inicial para motoristas, construído com Expo/React Native.
 ## O que esta versão já faz
 
 - login com token na API Django
-- carregar perfil do motorista
-- ver veículo vinculado e viagens do dia
-- iniciar viagem
-- finalizar viagem
-- enviar checklist rápido
-- atualizar localização manualmente
-- visualizar documentos próximos do vencimento
+- painel inicial com visão rápida do dia
+- viagens com iniciar/finalizar
+- checklist rápido de saída
+- rastreamento manual do veículo
+- perfil do motorista
+- visualização de documentos próximos do vencimento
 
 ## Requisitos
 
@@ -20,7 +19,7 @@ Aplicativo mobile inicial para motoristas, construído com Expo/React Native.
 - Expo Go no Android/iPhone ou emulador configurado
 - API Django do FleetISP rodando e acessível
 
-## Instalação
+## Instalação local
 
 ```bash
 cd mobile/driver-app
@@ -61,6 +60,31 @@ Isso é obrigatório porque a autenticação mobile usa `rest_framework.authtoke
 3. Se quiser restringir o veículo do motorista, preencha `Vehicle.current_driver`.
 4. Faça login no app com o mesmo usuário e senha do Django.
 5. Teste iniciar viagem, finalizar viagem, checklist e atualização de localização.
+
+## Gerar instalável Android
+
+Instale o EAS CLI:
+
+```bash
+npm install -g eas-cli
+```
+
+Depois, dentro de `mobile/driver-app`, rode:
+
+```bash
+eas login
+eas build -p android --profile preview
+```
+
+Esse perfil gera um `.apk` para instalar diretamente no celular.
+
+Para produção na Play Store:
+
+```bash
+eas build -p android --profile production
+```
+
+Esse perfil gera um `.aab`.
 
 ## Próximos passos sugeridos
 
