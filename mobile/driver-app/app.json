@@ -1,0 +1,29 @@
+{
+  "expo": {
+    "name": "FleetISP Driver",
+    "slug": "fleetisp-driver",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#0f172a"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": false
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0f172a"
+      },
+      "package": "com.fleetisp.driver"
+    },
+    "extra": {
+      "apiBaseUrl": "http://191.123.65.10:5000/api/mobile"
+    }
+  }
+}
