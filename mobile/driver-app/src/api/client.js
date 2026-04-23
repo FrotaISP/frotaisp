@@ -1,4 +1,30 @@
-const API_BASE_URL = 'http://191.123.65.10:5000/api/mobile';
+import Constants from 'expo-constants';
+
+const API_BASE_URL =
+  Constants.expoConfig?.extra?.apiBaseUrl ||
+  'http://191.123.65.10:5000/api/mobile';
+
+function extractErrorMessage(data) {
+  if (!data) {
+    return 'Não foi possível completar a requisição.';
+  }
+
+  if (typeof data.detail === 'string' && data.detail) {
+    return data.detail;
+  }
+
+  if (Array.isArray(data.non_field_errors) && data.non_field_errors.length) {
+    return data.non_field_errors[0];
+  }
+
+  const firstEntry = Object.entries(data).find(([, value]) => Array.isArray(value) && value.length);
+  if (firstEntry) {
+    const [field, messages] = firstEntry;
+    return `${field}: ${messages[0]}`;
+  }
+
+  return 'Não foi possível completar a requisição.';
+}
 
 async function request(path, { method = 'GET', token, body } = {}) {
   const headers = {
@@ -26,7 +52,7 @@ async function request(path, { method = 'GET', token, body } = {}) {
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    throw new Error(data.detail || data.non_field_errors?.[0] || 'Não foi possível completar a requisição.');
+    throw new Error(extractErrorMessage(data));
   }
 
   return data;
