@@ -1,9 +1,10 @@
 import React from 'react';
 import { ActivityIndicator, SafeAreaView, StatusBar, StyleSheet, View } from 'react-native';
 
+import AppShell from './src/components/AppShell';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
-import HomeScreen from './src/screens/HomeScreen';
 import LoginScreen from './src/screens/LoginScreen';
+import { colors } from './src/theme';
 
 function Root() {
   const { isLoading, token } = useAuth();
@@ -12,7 +13,7 @@ function Root() {
     return (
       <SafeAreaView style={styles.centered}>
         <StatusBar barStyle="light-content" />
-        <ActivityIndicator size="large" color="#38bdf8" />
+        <ActivityIndicator size="large" color={colors.primary} />
       </SafeAreaView>
     );
   }
@@ -20,7 +21,7 @@ function Root() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" />
-      <View style={styles.content}>{token ? <HomeScreen /> : <LoginScreen />}</View>
+      <View style={styles.content}>{token ? <AppShell /> : <LoginScreen />}</View>
     </SafeAreaView>
   );
 }
@@ -36,7 +37,7 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#020617',
+    backgroundColor: colors.background,
   },
   content: {
     flex: 1,
@@ -45,6 +46,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#020617',
+    backgroundColor: colors.background,
   },
 });
