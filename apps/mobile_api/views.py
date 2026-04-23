@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from django.db.models import Q
 from django.utils import timezone
 from rest_framework import status
@@ -9,7 +11,6 @@ from rest_framework.views import APIView
 from apps.drivers.models import Driver
 from apps.trips.models import Trip
 from apps.vehicles.models import Vehicle, VehicleChecklist, VehicleDocument
-from apps.core.mixins import get_user_company, get_user_profile, scope_queryset_for_user
 
 from .permissions import IsDriverMobileUser
 from .serializers import (
@@ -109,7 +110,7 @@ class MobileDashboardView(APIView):
         recent_checklists = VehicleChecklist.objects.select_related('vehicle').filter(driver=driver).order_by('-inspected_at')[:5]
         documents = VehicleDocument.objects.select_related('vehicle').filter(
             company=driver.company,
-            expiration_date__lte=today + timezone.timedelta(days=30),
+            expiration_date__lte=today + timedelta(days=30),
             is_active=True,
         ).filter(Q(driver=driver) | Q(vehicle__current_driver=driver)).order_by('expiration_date')[:5]
         allowed_vehicles = get_allowed_vehicles(driver)
@@ -240,7 +241,7 @@ class MobileDriverDocumentsView(APIView):
         ).filter(Q(driver=driver) | Q(vehicle__current_driver=driver)).order_by('expiration_date', 'title')
         soon = request.query_params.get('soon')
         if soon == '1':
-            documents = documents.filter(expiration_date__lte=today + timezone.timedelta(days=30))
+            documents = documents.filter(expiration_date__lte=today + timedelta(days=30))
         return Response(MobileDocumentSerializer(documents[:50], many=True).data)
 
 
