@@ -2,7 +2,6 @@ from django.contrib.auth import authenticate
 from django.utils import timezone
 from rest_framework import serializers
 
-from apps.accounts.models import UserProfile
 from apps.drivers.models import Driver
 from apps.trips.models import Trip
 from apps.vehicles.models import Vehicle, VehicleChecklist, VehicleDocument
@@ -84,10 +83,10 @@ class MobileDocumentSerializer(serializers.ModelSerializer):
 
 
 class MobileDriverProfileSerializer(serializers.ModelSerializer):
-    name = serializers.CharField(source='user.get_full_name', read_only=True)
+    name = serializers.SerializerMethodField()
     username = serializers.CharField(source='user.username', read_only=True)
     email = serializers.EmailField(source='user.email', read_only=True)
-    role = serializers.CharField(source='user.profile.role', read_only=True)
+    role = serializers.SerializerMethodField()
     company_name = serializers.CharField(source='company.name', read_only=True)
     assigned_vehicles = serializers.SerializerMethodField()
 
@@ -97,6 +96,13 @@ class MobileDriverProfileSerializer(serializers.ModelSerializer):
             'id', 'name', 'username', 'email', 'phone', 'cnh', 'cnh_expiration',
             'is_available', 'company_name', 'role', 'assigned_vehicles',
         ]
+
+    def get_name(self, obj):
+        return obj.user.get_full_name() or obj.user.username
+
+    def get_role(self, obj):
+        profile = getattr(obj.user, 'profile', None)
+        return getattr(profile, 'role', 'driver')
 
     def get_assigned_vehicles(self, obj):
         vehicles = obj.assigned_vehicles.filter(is_active=True).order_by('plate')
