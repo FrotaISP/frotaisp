@@ -31,6 +31,11 @@ export function useDriverDashboard() {
 
     if (token) {
       bootstrap();
+    } else {
+      setDashboard(null);
+      setLoading(false);
+      setRefreshing(false);
+      setError('');
     }
   }, [loadDashboard, token]);
 
