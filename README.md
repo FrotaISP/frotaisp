@@ -39,6 +39,8 @@ config/
   settings_prod.py   # producao
 ```
 
+Importante: o código Django ativo está em `apps/`. Existem pastas legadas duplicadas na raiz do repositório, mas elas não são a fonte principal do projeto atual. Veja `docs/estrutura-projeto.md`.
+
 ## Stack
 
 - Python 3.11+
@@ -78,6 +80,7 @@ pip install -r requirements.txt
 Crie um arquivo `.env` com base em `.env.example`.
 
 Por padrao, o projeto usa `APP_ENV=dev`. Nesse modo, se `DB_NAME` estiver vazio, o banco local sera SQLite. Para PostgreSQL, basta preencher as variaveis `DB_*`.
+Para uma base de producao, use tambem `.env.prod.example` como referencia.
 
 ### 5. Aplique as migracoes
 
