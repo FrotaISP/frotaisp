@@ -1,1 +1,0 @@
-# apps/vehicles/api/__init__.py
