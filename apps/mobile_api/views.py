@@ -2,12 +2,14 @@ from datetime import timedelta
 
 from django.db.models import Q
 from django.utils import timezone
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework import status
 from rest_framework.authtoken.models import Token
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.fuel.models import FuelRecord
 from apps.drivers.models import Driver
 from apps.trips.models import Trip
 from apps.vehicles.models import Vehicle, VehicleChecklist, VehicleDocument
@@ -15,16 +17,22 @@ from apps.vehicles.models import Vehicle, VehicleChecklist, VehicleDocument
 from .permissions import IsDriverMobileUser
 from .serializers import (
     DriverChecklistCreateSerializer,
+    DriverFuelCreateSerializer,
     DriverLocationUpdateSerializer,
+    DriverOccurrenceCreateSerializer,
     DriverTripFinishSerializer,
     DriverTripStartSerializer,
     MobileChecklistSerializer,
     MobileDocumentSerializer,
     MobileDriverProfileSerializer,
+    MobileFuelRecordSerializer,
     MobileLoginSerializer,
+    MobileOccurrenceSerializer,
     MobileTripSerializer,
     MobileVehicleSerializer,
+    notify_managers_about_occurrence,
 )
+from .models import MobileOccurrence
 
 
 def get_driver_for_user(user):
@@ -46,6 +54,9 @@ def get_allowed_vehicles(driver):
     assigned = Vehicle.objects.filter(current_driver=driver, is_active=True)
     if assigned.exists():
         return assigned.order_by('plate')
+    explicit_assignments = driver.assigned_vehicles.filter(is_active=True)
+    if explicit_assignments.exists():
+        return explicit_assignments.order_by('plate')
     return Vehicle.objects.filter(company=driver.company, is_active=True).order_by('plate')
 
 
@@ -56,7 +67,9 @@ def resolve_vehicle_for_driver(driver, vehicle_id=None):
     open_trip = get_open_trip(driver)
     if open_trip:
         return open_trip.vehicle
-    return allowed.first()
+    if allowed.count() == 1:
+        return allowed.first()
+    return None
 
 
 class MobileLoginView(APIView):
@@ -113,6 +126,11 @@ class MobileDashboardView(APIView):
             expiration_date__lte=today + timedelta(days=30),
             is_active=True,
         ).filter(Q(driver=driver) | Q(vehicle__current_driver=driver)).order_by('expiration_date')[:5]
+        recent_fuel = FuelRecord.objects.select_related('vehicle').filter(
+            company=driver.company,
+            vehicle__in=get_allowed_vehicles(driver),
+        ).order_by('-date', '-created_at')[:5]
+        recent_occurrences = MobileOccurrence.objects.select_related('vehicle').filter(driver=driver).order_by('-reported_at')[:5]
         allowed_vehicles = get_allowed_vehicles(driver)
 
         return Response({
@@ -122,6 +140,8 @@ class MobileDashboardView(APIView):
             'today_trips': MobileTripSerializer(today_trips, many=True).data,
             'recent_checklists': MobileChecklistSerializer(recent_checklists, many=True).data,
             'expiring_documents': MobileDocumentSerializer(documents, many=True).data,
+            'recent_fuel_records': MobileFuelRecordSerializer(recent_fuel, many=True, context={'request': request}).data,
+            'recent_occurrences': MobileOccurrenceSerializer(recent_occurrences, many=True, context={'request': request}).data,
         })
 
 
@@ -188,6 +208,7 @@ class MobileTripFinishView(APIView):
 
 class MobileChecklistListCreateView(APIView):
     permission_classes = [IsAuthenticated, IsDriverMobileUser]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get(self, request):
         try:
@@ -195,7 +216,7 @@ class MobileChecklistListCreateView(APIView):
         except PermissionError as exc:
             return Response({'detail': str(exc)}, status=status.HTTP_403_FORBIDDEN)
         items = VehicleChecklist.objects.select_related('vehicle').filter(driver=driver).order_by('-inspected_at')[:20]
-        return Response(MobileChecklistSerializer(items, many=True).data)
+        return Response(MobileChecklistSerializer(items, many=True, context={'request': request}).data)
 
     def post(self, request):
         try:
@@ -222,8 +243,89 @@ class MobileChecklistListCreateView(APIView):
             cleanliness_ok=serializer.validated_data['cleanliness_ok'],
             notes=serializer.validated_data.get('notes', ''),
             status=serializer.validated_data['status'],
+            photo=serializer.validated_data.get('photo'),
         )
-        return Response(MobileChecklistSerializer(checklist).data, status=status.HTTP_201_CREATED)
+        return Response(MobileChecklistSerializer(checklist, context={'request': request}).data, status=status.HTTP_201_CREATED)
+
+
+class MobileFuelListCreateView(APIView):
+    permission_classes = [IsAuthenticated, IsDriverMobileUser]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+    def get(self, request):
+        try:
+            driver = get_mobile_driver(request.user)
+        except PermissionError as exc:
+            return Response({'detail': str(exc)}, status=status.HTTP_403_FORBIDDEN)
+        items = FuelRecord.objects.select_related('vehicle').filter(
+            company=driver.company,
+            vehicle__in=get_allowed_vehicles(driver),
+        ).order_by('-date', '-created_at')[:20]
+        return Response(MobileFuelRecordSerializer(items, many=True, context={'request': request}).data)
+
+    def post(self, request):
+        try:
+            driver = get_mobile_driver(request.user)
+        except PermissionError as exc:
+            return Response({'detail': str(exc)}, status=status.HTTP_403_FORBIDDEN)
+        serializer = DriverFuelCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        vehicle = resolve_vehicle_for_driver(driver, serializer.validated_data.get('vehicle_id'))
+        if not vehicle:
+            return Response({'detail': 'Nenhum veiculo disponivel para abastecimento.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        record = FuelRecord.objects.create(
+            company=driver.company,
+            vehicle=vehicle,
+            date=serializer.validated_data['date'],
+            liters=serializer.validated_data['liters'],
+            price_per_liter=serializer.validated_data['price_per_liter'],
+            odometer=serializer.validated_data['odometer'],
+            gas_station=serializer.validated_data['gas_station'],
+            station_city=serializer.validated_data.get('station_city', ''),
+            payment_method=serializer.validated_data.get('payment_method', ''),
+            is_full_tank=serializer.validated_data.get('is_full_tank', False),
+            notes=serializer.validated_data.get('notes', ''),
+            photo=serializer.validated_data.get('photo'),
+            receipt=serializer.validated_data.get('receipt'),
+        )
+        return Response(MobileFuelRecordSerializer(record, context={'request': request}).data, status=status.HTTP_201_CREATED)
+
+
+class MobileOccurrenceListCreateView(APIView):
+    permission_classes = [IsAuthenticated, IsDriverMobileUser]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+    def get(self, request):
+        try:
+            driver = get_mobile_driver(request.user)
+        except PermissionError as exc:
+            return Response({'detail': str(exc)}, status=status.HTTP_403_FORBIDDEN)
+        items = MobileOccurrence.objects.select_related('vehicle').filter(driver=driver).order_by('-reported_at')[:30]
+        return Response(MobileOccurrenceSerializer(items, many=True, context={'request': request}).data)
+
+    def post(self, request):
+        try:
+            driver = get_mobile_driver(request.user)
+        except PermissionError as exc:
+            return Response({'detail': str(exc)}, status=status.HTTP_403_FORBIDDEN)
+        serializer = DriverOccurrenceCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        vehicle = resolve_vehicle_for_driver(driver, serializer.validated_data.get('vehicle_id'))
+        occurrence = MobileOccurrence.objects.create(
+            company=driver.company,
+            driver=driver,
+            vehicle=vehicle,
+            title=serializer.validated_data['title'],
+            category=serializer.validated_data['category'],
+            description=serializer.validated_data['description'],
+            severity=serializer.validated_data['severity'],
+            attachment=serializer.validated_data.get('attachment'),
+        )
+        notify_managers_about_occurrence(occurrence)
+        return Response(MobileOccurrenceSerializer(occurrence, context={'request': request}).data, status=status.HTTP_201_CREATED)
 
 
 class MobileDriverDocumentsView(APIView):
@@ -266,7 +368,9 @@ class MobileLocationUpdateView(APIView):
         vehicle.last_speed_kmh = serializer.validated_data.get('speed_kmh')
         vehicle.heading_degrees = serializer.validated_data.get('heading_degrees')
         vehicle.location_source = serializer.validated_data.get('location_source', 'app_mobile') or 'app_mobile'
-        vehicle.save(update_fields=['latitude', 'longitude', 'last_location_at', 'last_speed_kmh', 'heading_degrees', 'location_source', 'updated_at'])
+        if vehicle.current_driver_id != driver.id:
+            vehicle.current_driver = driver
+        vehicle.save(update_fields=['latitude', 'longitude', 'last_location_at', 'last_speed_kmh', 'heading_degrees', 'location_source', 'current_driver', 'updated_at'])
 
         return Response({
             'detail': 'Localizacao atualizada com sucesso.',
