@@ -1,8 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}
-    {% if object %}Editar Abastecimento{% else %}Novo Abastecimento{% endif %} · FleetISP
-{% endblock %}
+{% block title %}{% if object %}Editar Abastecimento{% else %}Novo Abastecimento{% endif %} · FleetISP{% endblock %}
 
 {% block content %}
 <h2 class="mb-4">
@@ -14,14 +12,14 @@
     <div class="card-body">
         <form method="post" enctype="multipart/form-data" novalidate>
             {% csrf_token %}
-            
+
             {% if form.non_field_errors %}
                 <div class="alert alert-danger">{{ form.non_field_errors }}</div>
             {% endif %}
 
             <div class="row">
                 <div class="col-md-6 mb-3">
-                    <label for="{{ form.vehicle.id_for_label }}" class="form-label">Veículo *</label>
+                    <label for="{{ form.vehicle.id_for_label }}" class="form-label">Veiculo *</label>
                     {{ form.vehicle }}
                     {{ form.vehicle.errors }}
                 </div>
@@ -39,31 +37,80 @@
                     {{ form.liters.errors }}
                 </div>
                 <div class="col-md-4 mb-3">
-                    <label for="{{ form.price_per_liter.id_for_label }}" class="form-label">Preço por Litro (R$) *</label>
+                    <label for="{{ form.price_per_liter.id_for_label }}" class="form-label">Preco por Litro (R$) *</label>
                     {{ form.price_per_liter }}
                     {{ form.price_per_liter.errors }}
                 </div>
                 <div class="col-md-4 mb-3">
-                    <label for="{{ form.odometer.id_for_label }}" class="form-label">Km no Abastecimento *</label>
+                    <label for="{{ form.odometer.id_for_label }}" class="form-label">Km no abastecimento *</label>
                     {{ form.odometer }}
                     {{ form.odometer.errors }}
                 </div>
             </div>
 
-            <div class="mb-3">
-                <label for="{{ form.gas_station.id_for_label }}" class="form-label">Posto *</label>
-                {{ form.gas_station }}
-                {{ form.gas_station.errors }}
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="{{ form.gas_station.id_for_label }}" class="form-label">Posto *</label>
+                    {{ form.gas_station }}
+                    {{ form.gas_station.errors }}
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="{{ form.station_city.id_for_label }}" class="form-label">Cidade do posto</label>
+                    {{ form.station_city }}
+                    {{ form.station_city.errors }}
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="{{ form.payment_method.id_for_label }}" class="form-label">Forma de pagamento</label>
+                    {{ form.payment_method }}
+                    {{ form.payment_method.errors }}
+                </div>
+                <div class="col-md-6 mb-3 d-flex align-items-end">
+                    <div class="form-check mb-2">
+                        {{ form.is_full_tank }}
+                        <label for="{{ form.is_full_tank.id_for_label }}" class="form-check-label">Tanque cheio</label>
+                    </div>
+                    {{ form.is_full_tank.errors }}
+                </div>
             </div>
 
             <div class="mb-3">
-                <label for="{{ form.receipt.id_for_label }}" class="form-label">Nota Fiscal (opcional)</label>
-                {{ form.receipt }}
-                {{ form.receipt.errors }}
+                <label for="{{ form.notes.id_for_label }}" class="form-label">Descricao / observacoes</label>
+                {{ form.notes }}
+                {{ form.notes.errors }}
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="{{ form.photo.id_for_label }}" class="form-label">Foto do abastecimento</label>
+                    {{ form.photo }}
+                    {{ form.photo.errors }}
+                    {% if object and object.photo %}
+                        <div class="mt-2">
+                            <a href="{{ object.photo.url }}" target="_blank" class="btn btn-sm btn-outline-secondary">
+                                <i class="bi bi-image me-1"></i>Ver foto atual
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="{{ form.receipt.id_for_label }}" class="form-label">Nota fiscal</label>
+                    {{ form.receipt }}
+                    {{ form.receipt.errors }}
+                    {% if object and object.receipt %}
+                        <div class="mt-2">
+                            <a href="{{ object.receipt.url }}" target="_blank" class="btn btn-sm btn-outline-secondary">
+                                <i class="bi bi-file-earmark-text me-1"></i>Ver nota atual
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
             </div>
 
             <div class="alert alert-info small">
-                <i class="bi bi-info-circle"></i> O custo total será calculado automaticamente.
+                <i class="bi bi-info-circle"></i> O custo total sera calculado automaticamente.
             </div>
 
             <div class="mt-4">
@@ -75,21 +122,4 @@
         </form>
     </div>
 </div>
-{% endblock %}
-
-{% block extra_js %}
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Adiciona classes Bootstrap
-        document.querySelectorAll('input:not([type="file"]), select, textarea').forEach(el => {
-            el.classList.add('form-control');
-        });
-        document.querySelectorAll('input[type="file"]').forEach(el => {
-            el.classList.add('form-control');
-        });
-        // Define tipo date para o campo de data
-        const dateInput = document.getElementById('{{ form.date.id_for_label }}');
-        if (dateInput) dateInput.type = 'date';
-    });
-</script>
 {% endblock %}
