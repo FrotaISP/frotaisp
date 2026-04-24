@@ -59,6 +59,8 @@ pythonenv*
 ehthumbs.db
 Thumbs.db
 *.tmp
+node_modules/
+mobile/driver-app/node_modules/
 
 # ==============================================
 # Testes e cobertura
