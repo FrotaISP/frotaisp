@@ -1,17 +1,19 @@
 # apps/dashboard/views.py
 from django.contrib.auth.decorators import login_required
+from django.contrib import messages
 from django.db.models import Sum, Q, F
 from django.http import JsonResponse
-from django.shortcuts import render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from datetime import timedelta
 
-from apps.core.mixins import scope_queryset_for_user
+from apps.core.mixins import get_user_profile, scope_queryset_for_user
 from apps.vehicles.models import Tire, Vehicle, VehicleChecklist, VehicleDocument
 from apps.drivers.models import Driver
 from apps.trips.models import Trip
 from apps.fuel.models import FuelRecord
 from apps.maintenance.models import Maintenance, PreventiveMaintenancePlan, VehicleExpense, WorkOrder
+from apps.mobile_api.models import MobileOccurrence
 
 
 @login_required
@@ -31,6 +33,7 @@ def dashboard_view(request):
     tires_qs = scope_queryset_for_user(Tire.objects.all(), request.user)
     work_orders_qs = scope_queryset_for_user(WorkOrder.objects.all(), request.user)
     expenses_qs = scope_queryset_for_user(VehicleExpense.objects.all(), request.user)
+    occurrences_qs = scope_queryset_for_user(MobileOccurrence.objects.all(), request.user)
 
     total_vehicles = vehicles_qs.filter(is_active=True).count()
     available_drivers = drivers_qs.filter(is_available=True).count()
@@ -118,6 +121,7 @@ def dashboard_view(request):
         'vehicles': vehicles,
         'vehicles_data': vehicles_data,
         'alerts': alerts[:8],
+        'open_occurrences_count': occurrences_qs.filter(status__in=['open', 'in_progress']).count(),
     }
     return render(request, 'dashboard/index.html', context)
 
@@ -125,9 +129,11 @@ def dashboard_view(request):
 @login_required
 def tracking_map_view(request):
     vehicles_qs = scope_queryset_for_user(Vehicle.objects.filter(is_active=True), request.user)
+    smartphone_count = vehicles_qs.filter(location_source__icontains='app_mobile').count()
     context = {
         'tracked_count': vehicles_qs.filter(latitude__isnull=False, longitude__isnull=False).count(),
         'total_active_count': vehicles_qs.count(),
+        'smartphone_count': smartphone_count,
     }
     return render(request, 'dashboard/tracking_map.html', context)
 
@@ -151,6 +157,7 @@ def tracking_positions_api(request):
             'model': vehicle.model,
             'brand': vehicle.brand,
             'driver': str(vehicle.current_driver) if vehicle.current_driver_id else '',
+            'driver_id': vehicle.current_driver_id,
             'latitude': float(vehicle.latitude) if vehicle.latitude is not None else None,
             'longitude': float(vehicle.longitude) if vehicle.longitude is not None else None,
             'speed': float(vehicle.last_speed_kmh) if vehicle.last_speed_kmh is not None else None,
@@ -159,7 +166,69 @@ def tracking_positions_api(request):
             'in_trip': vehicle.id in active_trip_vehicle_ids,
             'odometer': vehicle.current_odometer,
             'source': vehicle.location_source,
+            'is_smartphone_source': bool(vehicle.location_source and 'app_mobile' in vehicle.location_source),
             'last_location_at': last_location_at.isoformat() if last_location_at else None,
             'last_location_display': timezone.localtime(last_location_at).strftime('%d/%m/%Y %H:%M:%S') if last_location_at else 'Sem posicao',
         })
     return JsonResponse({'vehicles': vehicles, 'updated_at': timezone.now().isoformat()})
+
+
+@login_required
+def occurrences_view(request):
+    profile = get_user_profile(request.user)
+    if not profile.is_manager:
+        messages.error(request, 'Apenas gestores podem acompanhar ocorrencias.')
+        return redirect('dashboard:index')
+
+    base_items = scope_queryset_for_user(
+        MobileOccurrence.objects.select_related('driver__user', 'vehicle').all(),
+        request.user,
+    )
+    items = base_items
+
+    severity = request.GET.get('severity', '').strip()
+    status_filter = request.GET.get('status', '').strip()
+    category = request.GET.get('category', '').strip()
+    if severity:
+        items = items.filter(severity=severity)
+    if status_filter:
+        items = items.filter(status=status_filter)
+    if category:
+        items = items.filter(category=category)
+
+    context = {
+        'occurrences': items.order_by('-reported_at', '-created_at')[:100],
+        'selected_severity': severity,
+        'selected_status': status_filter,
+        'selected_category': category,
+        'occurrences_total': base_items.count(),
+        'occurrences_open': base_items.filter(status='open').count(),
+        'occurrences_in_progress': base_items.filter(status='in_progress').count(),
+        'occurrences_resolved': base_items.filter(status='resolved').count(),
+    }
+    return render(request, 'dashboard/occurrences.html', context)
+
+
+@login_required
+def occurrence_status_update_view(request, pk):
+    profile = get_user_profile(request.user)
+    if not profile.is_manager:
+        messages.error(request, 'Apenas gestores podem atualizar ocorrencias.')
+        return redirect('dashboard:index')
+    if request.method != 'POST':
+        return redirect('dashboard:occurrences')
+
+    occurrence = get_object_or_404(
+        scope_queryset_for_user(MobileOccurrence.objects.all(), request.user),
+        pk=pk,
+    )
+    new_status = request.POST.get('status', '').strip()
+    allowed = {'open', 'in_progress', 'resolved'}
+    if new_status not in allowed:
+        messages.error(request, 'Status invalido para ocorrencia.')
+        return redirect('dashboard:occurrences')
+
+    occurrence.status = new_status
+    occurrence.save(update_fields=['status', 'updated_at'])
+    messages.success(request, 'Status da ocorrencia atualizado com sucesso.')
+    return redirect('dashboard:occurrences')
