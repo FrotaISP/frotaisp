@@ -1,0 +1,174 @@
+{% extends 'base.html' %}
+{% block title %}Ocorrencias · FleetISP{% endblock %}
+{% block page_title %}<i class="bi bi-exclamation-octagon-fill me-2 text-danger"></i>Ocorrencias do Expediente{% endblock %}
+
+{% block content %}
+<div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body">
+        <div class="text-muted small text-uppercase fw-semibold">Total</div>
+        <div class="display-6 fw-bold">{{ occurrences_total }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body">
+        <div class="text-muted small text-uppercase fw-semibold">Abertas</div>
+        <div class="display-6 fw-bold text-danger">{{ occurrences_open }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body">
+        <div class="text-muted small text-uppercase fw-semibold">Em andamento</div>
+        <div class="display-6 fw-bold text-primary">{{ occurrences_in_progress }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body">
+        <div class="text-muted small text-uppercase fw-semibold">Resolvidas</div>
+        <div class="display-6 fw-bold text-success">{{ occurrences_resolved }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-body">
+    <form method="get" class="row g-3 align-items-end">
+      <div class="col-md-4">
+        <label class="form-label">Prioridade</label>
+        <select name="severity" class="form-select">
+          <option value="">Todas</option>
+          <option value="low" {% if selected_severity == 'low' %}selected{% endif %}>Baixa</option>
+          <option value="medium" {% if selected_severity == 'medium' %}selected{% endif %}>Media</option>
+          <option value="high" {% if selected_severity == 'high' %}selected{% endif %}>Alta</option>
+          <option value="critical" {% if selected_severity == 'critical' %}selected{% endif %}>Critica</option>
+        </select>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Status</label>
+        <select name="status" class="form-select">
+          <option value="">Todos</option>
+          <option value="open" {% if selected_status == 'open' %}selected{% endif %}>Aberta</option>
+          <option value="in_progress" {% if selected_status == 'in_progress' %}selected{% endif %}>Em andamento</option>
+          <option value="resolved" {% if selected_status == 'resolved' %}selected{% endif %}>Resolvida</option>
+        </select>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Categoria</label>
+        <select name="category" class="form-select">
+          <option value="">Todas</option>
+          <option value="general" {% if selected_category == 'general' %}selected{% endif %}>Geral</option>
+          <option value="mechanical" {% if selected_category == 'mechanical' %}selected{% endif %}>Mecanica</option>
+          <option value="electrical" {% if selected_category == 'electrical' %}selected{% endif %}>Eletrica</option>
+          <option value="accident" {% if selected_category == 'accident' %}selected{% endif %}>Acidente</option>
+          <option value="delay" {% if selected_category == 'delay' %}selected{% endif %}>Atraso</option>
+          <option value="client" {% if selected_category == 'client' %}selected{% endif %}>Cliente</option>
+          <option value="security" {% if selected_category == 'security' %}selected{% endif %}>Seguranca</option>
+          <option value="fuel" {% if selected_category == 'fuel' %}selected{% endif %}>Abastecimento</option>
+        </select>
+      </div>
+      <div class="col-md-12 d-flex gap-2">
+        <button type="submit" class="btn btn-primary"><i class="bi bi-funnel me-1"></i>Filtrar</button>
+        <a href="{% url 'dashboard:occurrences' %}" class="btn btn-outline-secondary">Limpar</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="d-grid gap-3">
+  {% for item in occurrences %}
+  <div class="card border-0 shadow-sm">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-3">
+        <div>
+          <h5 class="mb-1">{{ item.title }}</h5>
+          <div class="text-muted small">
+            {{ item.reported_at|date:"d/m/Y H:i" }} · {{ item.driver }} ·
+            {% if item.vehicle %}{{ item.vehicle.plate }}{% else %}Sem veiculo{% endif %}
+          </div>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+          <span class="badge bg-light text-dark border">{{ item.get_category_display }}</span>
+          <span class="badge {% if item.severity == 'critical' %}bg-danger{% elif item.severity == 'high' %}bg-warning text-dark{% elif item.severity == 'medium' %}bg-info text-dark{% else %}bg-secondary{% endif %}">
+            {{ item.get_severity_display }}
+          </span>
+          <span class="badge {% if item.status == 'resolved' %}bg-success{% elif item.status == 'in_progress' %}bg-primary{% else %}bg-danger{% endif %}">
+            {{ item.get_status_display }}
+          </span>
+        </div>
+      </div>
+
+      <div class="row g-3">
+        <div class="col-lg-3">
+          <div class="border rounded-3 p-3 h-100 bg-body-tertiary">
+            <div class="small text-muted text-uppercase fw-semibold mb-2">Contexto</div>
+            <div class="small d-grid gap-2">
+              <div><span class="text-muted d-block">Motorista</span><strong>{{ item.driver }}</strong></div>
+              <div><span class="text-muted d-block">Veiculo</span><strong>{% if item.vehicle %}{{ item.vehicle.plate }} - {{ item.vehicle.model }}{% else %}-{% endif %}</strong></div>
+              <div><span class="text-muted d-block">Categoria</span><strong>{{ item.get_category_display }}</strong></div>
+              <div><span class="text-muted d-block">Prioridade</span><strong>{{ item.get_severity_display }}</strong></div>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-5">
+          <div class="border rounded-3 p-3 h-100 bg-body-tertiary">
+            <div class="small text-muted text-uppercase fw-semibold mb-2">Descricao completa</div>
+            <div class="mb-0" style="white-space: pre-wrap;">{{ item.description|default:"Sem descricao detalhada." }}</div>
+          </div>
+        </div>
+        <div class="col-lg-4">
+          <div class="border rounded-3 p-3 h-100 bg-body-tertiary">
+            <div class="small text-muted text-uppercase fw-semibold mb-2">Anexo</div>
+            {% if item.attachment %}
+              <div class="d-grid gap-2">
+                <a href="{{ item.attachment.url }}" target="_blank" class="btn btn-outline-secondary btn-sm">
+                  <i class="bi bi-paperclip me-1"></i>Abrir arquivo
+                </a>
+                {% if ".jpg" in item.attachment.url|lower or ".jpeg" in item.attachment.url|lower or ".png" in item.attachment.url|lower or ".webp" in item.attachment.url|lower %}
+                  <a href="{{ item.attachment.url }}" target="_blank">
+                    <img src="{{ item.attachment.url }}" alt="Anexo da ocorrencia" class="img-fluid rounded border">
+                  </a>
+                {% endif %}
+              </div>
+            {% else %}
+              <span class="text-muted small">Sem anexo</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <div class="d-flex flex-wrap gap-2 mt-3">
+        <form method="post" action="{% url 'dashboard:occurrence_status' item.pk %}">
+          {% csrf_token %}
+          <input type="hidden" name="status" value="open">
+          <button class="btn btn-sm btn-outline-danger" {% if item.status == 'open' %}disabled{% endif %}>Reabrir</button>
+        </form>
+        <form method="post" action="{% url 'dashboard:occurrence_status' item.pk %}">
+          {% csrf_token %}
+          <input type="hidden" name="status" value="in_progress">
+          <button class="btn btn-sm btn-outline-primary" {% if item.status == 'in_progress' %}disabled{% endif %}>Em andamento</button>
+        </form>
+        <form method="post" action="{% url 'dashboard:occurrence_status' item.pk %}">
+          {% csrf_token %}
+          <input type="hidden" name="status" value="resolved">
+          <button class="btn btn-sm btn-outline-success" {% if item.status == 'resolved' %}disabled{% endif %}>Resolver</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% empty %}
+  <div class="card border-0 shadow-sm">
+    <div class="card-body text-center py-5 text-muted">
+      Nenhuma ocorrencia registrada ate o momento.
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}
