@@ -1,10 +1,15 @@
+from decimal import Decimal
+
 from django.contrib.auth import authenticate
 from django.utils import timezone
 from rest_framework import serializers
 
+from apps.accounts.models import Notificacao, UserProfile
+from apps.fuel.models import FuelRecord
 from apps.drivers.models import Driver
 from apps.trips.models import Trip
 from apps.vehicles.models import Vehicle, VehicleChecklist, VehicleDocument
+from .models import MobileOccurrence
 
 
 class MobileLoginSerializer(serializers.Serializer):
@@ -59,13 +64,22 @@ class MobileTripSerializer(serializers.ModelSerializer):
 class MobileChecklistSerializer(serializers.ModelSerializer):
     vehicle = MobileVehicleSerializer(read_only=True)
     has_issues = serializers.BooleanField(read_only=True)
+    photo_url = serializers.SerializerMethodField()
 
     class Meta:
         model = VehicleChecklist
         fields = [
             'id', 'vehicle', 'inspected_at', 'odometer', 'tires_ok', 'oil_ok', 'brakes_ok',
-            'lights_ok', 'safety_items_ok', 'cleanliness_ok', 'status', 'notes', 'photo', 'has_issues',
+            'lights_ok', 'safety_items_ok', 'cleanliness_ok', 'status', 'notes', 'photo', 'photo_url', 'has_issues',
         ]
+
+    def get_photo_url(self, obj):
+        request = self.context.get('request')
+        if not obj.photo:
+            return ''
+        if request:
+            return request.build_absolute_uri(obj.photo.url)
+        return obj.photo.url
 
 
 class MobileDocumentSerializer(serializers.ModelSerializer):
@@ -80,6 +94,55 @@ class MobileDocumentSerializer(serializers.ModelSerializer):
             'id', 'document_type', 'title', 'number', 'expiration_date', 'days_until_expiration',
             'is_expired', 'is_expiring_soon', 'vehicle', 'notes',
         ]
+
+
+class MobileFuelRecordSerializer(serializers.ModelSerializer):
+    vehicle = MobileVehicleSerializer(read_only=True)
+    photo_url = serializers.SerializerMethodField()
+    receipt_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = FuelRecord
+        fields = [
+            'id', 'vehicle', 'date', 'liters', 'price_per_liter', 'total_cost', 'odometer',
+            'gas_station', 'station_city', 'payment_method', 'is_full_tank', 'notes', 'photo', 'photo_url', 'receipt', 'receipt_url',
+        ]
+
+    def get_photo_url(self, obj):
+        request = self.context.get('request')
+        if not obj.photo:
+            return ''
+        if request:
+            return request.build_absolute_uri(obj.photo.url)
+        return obj.photo.url
+
+    def get_receipt_url(self, obj):
+        request = self.context.get('request')
+        if not obj.receipt:
+            return ''
+        if request:
+            return request.build_absolute_uri(obj.receipt.url)
+        return obj.receipt.url
+
+
+class MobileOccurrenceSerializer(serializers.ModelSerializer):
+    vehicle = MobileVehicleSerializer(read_only=True)
+    attachment_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = MobileOccurrence
+        fields = [
+            'id', 'vehicle', 'reported_at', 'title', 'category', 'description', 'severity',
+            'status', 'attachment', 'attachment_url',
+        ]
+
+    def get_attachment_url(self, obj):
+        request = self.context.get('request')
+        if not obj.attachment:
+            return ''
+        if request:
+            return request.build_absolute_uri(obj.attachment.url)
+        return obj.attachment.url
 
 
 class MobileDriverProfileSerializer(serializers.ModelSerializer):
@@ -144,6 +207,7 @@ class DriverChecklistCreateSerializer(serializers.Serializer):
     safety_items_ok = serializers.BooleanField(default=True)
     cleanliness_ok = serializers.BooleanField(default=True)
     notes = serializers.CharField(required=False, allow_blank=True)
+    photo = serializers.ImageField(required=False, allow_null=True)
 
     def validate(self, attrs):
         flags = [
@@ -170,3 +234,51 @@ class DriverLocationUpdateSerializer(serializers.Serializer):
     def validate(self, attrs):
         attrs['recorded_at'] = attrs.get('recorded_at') or timezone.now()
         return attrs
+
+
+class DriverFuelCreateSerializer(serializers.Serializer):
+    vehicle_id = serializers.IntegerField(required=False)
+    date = serializers.DateField(required=False)
+    liters = serializers.DecimalField(max_digits=8, decimal_places=2, min_value=Decimal('0.01'))
+    price_per_liter = serializers.DecimalField(max_digits=6, decimal_places=2, min_value=Decimal('0.01'))
+    odometer = serializers.IntegerField(min_value=0)
+    gas_station = serializers.CharField(max_length=100)
+    station_city = serializers.CharField(max_length=80, required=False, allow_blank=True)
+    payment_method = serializers.ChoiceField(choices=FuelRecord.PAYMENT_METHOD_CHOICES, required=False, allow_blank=True)
+    is_full_tank = serializers.BooleanField(required=False, default=False)
+    notes = serializers.CharField(required=False, allow_blank=True)
+    photo = serializers.ImageField(required=False, allow_null=True)
+    receipt = serializers.FileField(required=False, allow_null=True)
+
+    def validate(self, attrs):
+        attrs['date'] = attrs.get('date') or timezone.localdate()
+        return attrs
+
+
+class DriverOccurrenceCreateSerializer(serializers.Serializer):
+    vehicle_id = serializers.IntegerField(required=False)
+    title = serializers.CharField(max_length=140)
+    category = serializers.ChoiceField(choices=MobileOccurrence.CATEGORY_CHOICES, default='general')
+    description = serializers.CharField()
+    severity = serializers.ChoiceField(choices=MobileOccurrence.SEVERITY_CHOICES, default='medium')
+    attachment = serializers.FileField(required=False, allow_null=True)
+
+
+def notify_managers_about_occurrence(occurrence):
+    from django.urls import reverse
+
+    managers = UserProfile.objects.select_related('user').filter(
+        company=occurrence.company,
+        role__in=['admin', 'manager'],
+        user__is_active=True,
+    )
+    for profile in managers:
+        Notificacao.objects.create(
+            usuario=profile.user,
+            tipo='alerta' if occurrence.severity in ('high', 'critical') else 'info',
+            action_url=reverse('dashboard:occurrences'),
+            mensagem=(
+                f'Ocorrencia registrada por {occurrence.driver.user.get_full_name() or occurrence.driver.user.username}: '
+                f'{occurrence.title}'
+            ),
+        )
