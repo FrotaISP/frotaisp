@@ -5,7 +5,7 @@
             <h4 class="text-white fw-bold mb-0">
                 <i class="bi bi-truck me-2"></i>Fleet<span class="fw-light">ISP</span>
             </h4>
-            <small class="text-white-50">Gestao de Frotas · v1.0</small>
+            <small class="text-white-50">Gestao de Frotas · v1.2</small>
         </div>
         <nav class="nav flex-column mt-3">
             <a class="nav-link {% if request.resolver_match.app_name == 'dashboard' and request.resolver_match.url_name == 'index' %}active{% endif %}" href="{% url 'dashboard:index' %}">
@@ -13,6 +13,9 @@
             </a>
             <a class="nav-link {% if request.resolver_match.url_name == 'tracking' %}active{% endif %}" href="{% url 'dashboard:tracking' %}">
                 <i class="bi bi-geo-alt-fill"></i> Rastreamento
+            </a>
+            <a class="nav-link {% if request.resolver_match.url_name == 'occurrences' %}active{% endif %}" href="{% url 'dashboard:occurrences' %}">
+                <i class="bi bi-exclamation-octagon"></i> Ocorrencias
             </a>
             <a class="nav-link {% if request.resolver_match.app_name == 'vehicles' and request.resolver_match.url_name == 'list' %}active{% endif %}" href="{% url 'vehicles:list' %}">
                 <i class="bi bi-car-front"></i> Veiculos
