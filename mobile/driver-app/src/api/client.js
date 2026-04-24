@@ -1,6 +1,7 @@
 import Constants from 'expo-constants';
 
 const API_BASE_URL =
+  process.env.EXPO_PUBLIC_API_BASE_URL ||
   Constants.expoConfig?.extra?.apiBaseUrl ||
   'http://191.123.65.10:5000/api/mobile';
 
@@ -31,7 +32,9 @@ async function request(path, { method = 'GET', token, body } = {}) {
     Accept: 'application/json',
   };
 
-  if (body) {
+  const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
+
+  if (body && !isFormData) {
     headers['Content-Type'] = 'application/json';
   }
 
@@ -42,7 +45,7 @@ async function request(path, { method = 'GET', token, body } = {}) {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method,
     headers,
-    body: body ? JSON.stringify(body) : undefined,
+    body: body ? (isFormData ? body : JSON.stringify(body)) : undefined,
   });
 
   if (response.status === 204) {
@@ -58,6 +61,44 @@ async function request(path, { method = 'GET', token, body } = {}) {
   return data;
 }
 
+function guessMimeType(name = '') {
+  const lower = name.toLowerCase();
+  if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) {
+    return 'image/jpeg';
+  }
+  if (lower.endsWith('.png')) {
+    return 'image/png';
+  }
+  if (lower.endsWith('.pdf')) {
+    return 'application/pdf';
+  }
+  return 'application/octet-stream';
+}
+
+export function createMultipartFormData(fields = {}, files = {}) {
+  const formData = new FormData();
+
+  Object.entries(fields).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === '') {
+      return;
+    }
+    formData.append(key, String(value));
+  });
+
+  Object.entries(files).forEach(([key, file]) => {
+    if (!file?.uri) {
+      return;
+    }
+    formData.append(key, {
+      uri: file.uri,
+      name: file.name || `${key}.jpg`,
+      type: file.mimeType || file.type || guessMimeType(file.name || ''),
+    });
+  });
+
+  return formData;
+}
+
 export const api = {
   login: (payload) => request('/auth/login/', { method: 'POST', body: payload }),
   logout: (token) => request('/auth/logout/', { method: 'POST', token }),
@@ -68,5 +109,10 @@ export const api = {
   finishTrip: (token, id, payload) => request(`/trips/${id}/finish/`, { method: 'POST', token, body: payload }),
   checklists: (token) => request('/checklists/', { token }),
   createChecklist: (token, payload) => request('/checklists/', { method: 'POST', token, body: payload }),
+  fuelRecords: (token) => request('/fuel/', { token }),
+  createFuelRecord: (token, payload) => request('/fuel/', { method: 'POST', token, body: payload }),
+  occurrences: (token) => request('/occurrences/', { token }),
+  createOccurrence: (token, payload) => request('/occurrences/', { method: 'POST', token, body: payload }),
+  documents: (token, soon = false) => request(`/documents/${soon ? '?soon=1' : ''}`, { token }),
   updateLocation: (token, payload) => request('/location/', { method: 'POST', token, body: payload }),
 };
