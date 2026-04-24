@@ -10,7 +10,10 @@ from apps.vehicles.models import Vehicle
 class FuelRecordForm(forms.ModelForm):
     class Meta:
         model = FuelRecord
-        fields = ['vehicle', 'date', 'liters', 'price_per_liter', 'odometer', 'gas_station', 'receipt']
+        fields = [
+            'vehicle', 'date', 'liters', 'price_per_liter', 'odometer', 'gas_station',
+            'station_city', 'payment_method', 'is_full_tank', 'notes', 'photo', 'receipt',
+        ]
         widgets = {
             'vehicle': forms.Select(attrs={'class': 'form-select'}),
             'date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
@@ -18,6 +21,11 @@ class FuelRecordForm(forms.ModelForm):
             'price_per_liter': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'min': '0.01'}),
             'odometer': forms.NumberInput(attrs={'class': 'form-control', 'min': '0'}),
             'gas_station': forms.TextInput(attrs={'class': 'form-control'}),
+            'station_city': forms.TextInput(attrs={'class': 'form-control'}),
+            'payment_method': forms.Select(attrs={'class': 'form-select'}),
+            'is_full_tank': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'photo': forms.ClearableFileInput(attrs={'class': 'form-control'}),
             'receipt': forms.ClearableFileInput(attrs={'class': 'form-control'}),
         }
 
@@ -81,6 +89,14 @@ class FuelRecordForm(forms.ModelForm):
                 )
 
         return odometer
+
+    def clean_photo(self):
+        photo = self.cleaned_data.get('photo')
+        try:
+            validate_uploaded_file(photo, allowed_types=['image/jpeg', 'image/png', 'image/webp'], label='A foto do abastecimento')
+        except ValueError as exc:
+            raise forms.ValidationError(str(exc)) from exc
+        return photo
 
     def clean_receipt(self):
         receipt = self.cleaned_data.get('receipt')
